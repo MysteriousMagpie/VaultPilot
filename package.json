@@ -1,9 +1,0 @@
-{
-  "name": "vaultpilot-root",
-  "private": true,
-  "workspaces": ["vaultpilot"],
-  "scripts": {
-    "dev": "npm run dev --workspace vaultpilot",
-    "build": "npm run build --workspace vaultpilot"
-  }
-}
