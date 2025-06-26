@@ -5,11 +5,13 @@
     "lib": ["es6", "dom"],
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "outDir": "dist",
+    "outDir": "dist",                    
     "strict": true,
     "sourceMap": true,
-    "inlineSources": true
-  },
+    "inlineSources": true,
+    "types": ["obsidian"]              
+  }
+  ,
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]
 }

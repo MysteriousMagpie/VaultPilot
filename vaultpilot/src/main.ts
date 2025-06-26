@@ -3,7 +3,7 @@ import { VaultPilotSettingTab, DEFAULT_SETTINGS, VaultPilotSettings } from './se
 import { VIEW_TYPE_VAULTPILOT, VaultPilotView } from './view';
 
 export default class VaultPilotPlugin extends Plugin {
-  settings: VaultPilotSettings;
+  settings!: VaultPilotSettings;
 
   async onload() {
     await this.loadSettings();
@@ -40,10 +40,13 @@ export default class VaultPilotPlugin extends Plugin {
   async activateView() {
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_VAULTPILOT);
     if (leaves.length === 0) {
-      await this.app.workspace.getRightLeaf(false).setViewState({
-        type: VIEW_TYPE_VAULTPILOT,
-        active: true
-      });
+      const rightLeaf = this.app.workspace.getRightLeaf(false);
+      if (rightLeaf) {
+        await rightLeaf.setViewState({
+          type: VIEW_TYPE_VAULTPILOT,
+          active: true
+        });
+      }
     } else {
       this.app.workspace.revealLeaf(leaves[0]);
     }
