@@ -1,20 +1,20 @@
-import typescript from 'rollup-plugin-typescript2';
-import { nodeResolve } from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
-import { terser } from '@rollup-plugin-terser';
+const typescript = require('rollup-plugin-typescript2');
+const { nodeResolve } = require('@rollup/plugin-node-resolve');
+const commonjs = require('@rollup/plugin-commonjs');
+const { terser } = require('@rollup/plugin-terser');
 
-export default {
+module.exports = {
   input: 'src/main.ts',
   output: {
     dir: 'dist',
     format: 'cjs',
-    sourcemap: 'inline'
+    sourcemap: 'inline',
   },
   external: ['obsidian'],
   plugins: [
     typescript(),
     nodeResolve({ browser: true }),
     commonjs(),
-    terser()
-  ]
+    terser(),
+  ],
 };
