@@ -1,9 +1,9 @@
 {
-  "id": "obsidian-evo-agentx-plugin",
-  "name": "EvoAgent X Frontend",
+  "id": "vaultpilot",
+  "name": "VaultPilot",
   "version": "0.0.1",
   "minAppVersion": "0.15.0",
-  "description": "Thin frontend to EvoAgent X backend",
+  "description": "VaultPilot frontend for EvoAgent X backend",
   "author": "Your Name",
   "authorUrl": "https://github.com/yourname",
   "main": "main.js"

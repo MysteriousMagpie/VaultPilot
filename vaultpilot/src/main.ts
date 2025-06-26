@@ -1,9 +1,9 @@
 import { Plugin, Notice } from 'obsidian';
-import { EvoAgentSettingTab, DEFAULT_SETTINGS, EvoAgentSettings } from './settings';
-import { VIEW_TYPE_EVO_AGENT, EvoAgentView } from './view';
+import { VaultPilotSettingTab, DEFAULT_SETTINGS, VaultPilotSettings } from './settings';
+import { VIEW_TYPE_VAULTPILOT, VaultPilotView } from './view';
 
-export default class EvoAgentXPlugin extends Plugin {
-  settings: EvoAgentSettings;
+export default class VaultPilotPlugin extends Plugin {
+  settings: VaultPilotSettings;
 
   async onload() {
     await this.loadSettings();
@@ -16,32 +16,32 @@ export default class EvoAgentXPlugin extends Plugin {
     }
 
     this.registerView(
-      VIEW_TYPE_EVO_AGENT,
-      (leaf) => new EvoAgentView(leaf, this)
+      VIEW_TYPE_VAULTPILOT,
+      (leaf) => new VaultPilotView(leaf, this)
     );
 
-    this.addRibbonIcon('dice', 'Open EvoAgent X', () => {
+    this.addRibbonIcon('dice', 'Open VaultPilot', () => {
       this.activateView();
     });
 
     this.addCommand({
-      id: 'open-evo-agent-view',
-      name: 'Open EvoAgent View',
+      id: 'open-vaultpilot-view',
+      name: 'Open VaultPilot View',
       callback: () => this.activateView()
     });
 
-    this.addSettingTab(new EvoAgentSettingTab(this.app, this));
+    this.addSettingTab(new VaultPilotSettingTab(this.app, this));
   }
 
   onunload() {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_EVO_AGENT);
+    this.app.workspace.detachLeavesOfType(VIEW_TYPE_VAULTPILOT);
   }
 
   async activateView() {
-    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_EVO_AGENT);
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_VAULTPILOT);
     if (leaves.length === 0) {
       await this.app.workspace.getRightLeaf(false).setViewState({
-        type: VIEW_TYPE_EVO_AGENT,
+        type: VIEW_TYPE_VAULTPILOT,
         active: true
       });
     } else {

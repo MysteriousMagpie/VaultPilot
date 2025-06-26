@@ -1,29 +1,29 @@
 import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
-import type EvoAgentXPlugin from './main';
+import type VaultPilotPlugin from './main';
 
-export const VIEW_TYPE_EVO_AGENT = 'evo-agent-view';
+export const VIEW_TYPE_VAULTPILOT = 'vaultpilot-view';
 
-export class EvoAgentView extends ItemView {
+export class VaultPilotView extends ItemView {
   private outputEl: HTMLElement | null = null;
-  plugin: EvoAgentXPlugin;
+  plugin: VaultPilotPlugin;
 
-  constructor(leaf: WorkspaceLeaf, plugin: EvoAgentXPlugin) {
+  constructor(leaf: WorkspaceLeaf, plugin: VaultPilotPlugin) {
     super(leaf);
     this.plugin = plugin;
   }
 
   getViewType(): string {
-    return VIEW_TYPE_EVO_AGENT;
+    return VIEW_TYPE_VAULTPILOT;
   }
 
   getDisplayText(): string {
-    return 'EvoAgent X';
+    return 'VaultPilot';
   }
 
   async onOpen() {
     const container = this.containerEl;
     container.empty();
-    container.createEl('h2', { text: 'EvoAgent X' });
+    container.createEl('h2', { text: 'VaultPilot' });
     const btn = container.createEl('button', { text: 'Run Workflow' });
     btn.addEventListener('click', () => this.runWorkflow());
     this.outputEl = container.createEl('pre');

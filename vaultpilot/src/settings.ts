@@ -1,18 +1,18 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import type EvoAgentXPlugin from './main';
+import type VaultPilotPlugin from './main';
 
-export interface EvoAgentSettings {
+export interface VaultPilotSettings {
   backendUrl: string;
 }
 
-export const DEFAULT_SETTINGS: EvoAgentSettings = {
+export const DEFAULT_SETTINGS: VaultPilotSettings = {
   backendUrl: 'http://localhost:3000'
 };
 
-export class EvoAgentSettingTab extends PluginSettingTab {
-  plugin: EvoAgentXPlugin;
+export class VaultPilotSettingTab extends PluginSettingTab {
+  plugin: VaultPilotPlugin;
 
-  constructor(app: App, plugin: EvoAgentXPlugin) {
+  constructor(app: App, plugin: VaultPilotPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -20,7 +20,7 @@ export class EvoAgentSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl('h2', { text: 'EvoAgent X Settings' });
+    containerEl.createEl('h2', { text: 'VaultPilot Settings' });
 
     new Setting(containerEl)
       .setName('Backend URL')

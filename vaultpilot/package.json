@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-evo-agentx-plugin",
+  "name": "vaultpilot",
   "version": "0.0.1",
-  "description": "Thin frontend to EvoAgent X backend",
+  "description": "VaultPilot frontend for EvoAgent X backend",
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rollup -c"

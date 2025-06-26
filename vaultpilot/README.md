@@ -1,4 +1,4 @@
-# EvoAgent X Obsidian Plugin
+# VaultPilot Obsidian Plugin
 
 This plugin provides a thin frontend for the EvoAgent X backend. It exposes a view inside Obsidian that allows you to send the current note to the backend and display the result.
 
