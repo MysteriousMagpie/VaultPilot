@@ -1,0 +1,10 @@
+{
+  "id": "vaultpilot",
+  "name": "VaultPilot",
+  "version": "0.0.1",
+  "minAppVersion": "0.15.0",
+  "description": "VaultPilot frontend for EvoAgent X backend",
+  "author": "Your Name",
+  "authorUrl": "https://github.com/yourname",
+  "main": "dist/main.js"
+}
