@@ -20,7 +20,20 @@ export default class VaultPilotPlugin extends Plugin {
 
     // Test backend connection
     try {
-      const response = await this.apiClient.healthCheck();
+      let response = await this.apiClient.healthCheck();
+      
+      // If the main health check fails with a 400, try the simple check
+      if (!response.success && response.error?.includes('400')) {
+        console.warn('Main health check failed with 400, trying alternative method');
+        const simpleResponse = await this.apiClient.simpleHealthCheck();
+        if (simpleResponse.success && simpleResponse.data) {
+          response = {
+            success: true,
+            data: { status: simpleResponse.data.status, version: 'unknown' }
+          };
+        }
+      }
+      
       if (response.success) {
         new Notice('✅ VaultPilot connected to EvoAgentX', 3000);
         // Connect WebSocket if enabled
@@ -28,9 +41,11 @@ export default class VaultPilotPlugin extends Plugin {
           this.connectWebSocket();
         }
       } else {
+        console.error('Health check failed:', response.error);
         new Notice('⚠️ EvoAgentX backend offline - some features may not work', 5000);
       }
     } catch (error) {
+      console.error('Health check error:', error);
       new Notice('⚠️ Cannot connect to EvoAgentX backend', 5000);
     }
 

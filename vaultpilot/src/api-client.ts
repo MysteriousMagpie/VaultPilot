@@ -39,6 +39,7 @@ export class EvoAgentXClient {
     const url = `${this.baseUrl}${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       ...(options.headers as Record<string, string> || {}),
     };
 
@@ -50,22 +51,37 @@ export class EvoAgentXClient {
       const response = await fetch(url, {
         ...options,
         headers,
+        mode: 'cors',
+        credentials: 'omit',
       });
 
-      const data = await response.json();
+      // Handle non-JSON responses gracefully
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = await response.text();
+      }
 
       if (!response.ok) {
+        const errorMessage = typeof data === 'object' && data.error 
+          ? data.error 
+          : `HTTP ${response.status}: ${response.statusText}`;
+        
+        console.error(`API Error [${response.status}]:`, errorMessage);
         return {
           success: false,
-          error: data.error || `HTTP ${response.status}: ${response.statusText}`,
+          error: errorMessage,
         };
       }
 
       return {
         success: true,
-        data,
+        data: typeof data === 'string' ? { message: data } as T : data,
       };
     } catch (error) {
+      console.error('API Request Error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -75,7 +91,41 @@ export class EvoAgentXClient {
 
   // Health check
   async healthCheck(): Promise<APIResponse<{ status: string; version: string }>> {
-    return this.makeRequest('/api/obsidian/health');
+    console.log(`VaultPilot: Attempting health check to ${this.baseUrl}/api/obsidian/health`);
+    const result = await this.makeRequest<{ status: string; version: string }>('/api/obsidian/health', {
+      method: 'GET',
+    });
+    console.log('VaultPilot: Health check result:', result);
+    return result;
+  }
+
+  // Alternative health check method if the main one fails
+  async simpleHealthCheck(): Promise<APIResponse<{ status: string }>> {
+    try {
+      const url = `${this.baseUrl}/api/obsidian/health`;
+      const response = await fetch(url, {
+        method: 'HEAD',
+        mode: 'cors',
+        credentials: 'omit',
+      });
+      
+      if (response.ok || response.status === 405) { // 405 means server is up but doesn't support HEAD
+        return {
+          success: true,
+          data: { status: 'ok' }
+        };
+      }
+      
+      return {
+        success: false,
+        error: `Server responded with status ${response.status}`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Connection failed'
+      };
+    }
   }
 
   // Chat functionality
@@ -177,17 +227,19 @@ export class EvoAgentXClient {
     onDisconnect?: () => void;
   }): void {
     const wsUrl = this.baseUrl.replace('http', 'ws') + '/ws/obsidian';
+    console.log(`VaultPilot: Attempting WebSocket connection to ${wsUrl}`);
     
     this.websocket = new WebSocket(wsUrl);
 
     this.websocket.onopen = () => {
-      console.log('WebSocket connected to EvoAgentX');
+      console.log('VaultPilot: WebSocket connected to EvoAgentX');
       callbacks.onConnect?.();
     };
 
     this.websocket.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
+        console.log('VaultPilot: WebSocket message received:', message.type);
         
         switch (message.type) {
           case 'chat':
@@ -207,18 +259,18 @@ export class EvoAgentXClient {
             break;
         }
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error('VaultPilot: Error parsing WebSocket message:', error);
         callbacks.onError?.('Failed to parse WebSocket message');
       }
     };
 
-    this.websocket.onclose = () => {
-      console.log('WebSocket disconnected from EvoAgentX');
+    this.websocket.onclose = (event) => {
+      console.log('VaultPilot: WebSocket disconnected from EvoAgentX', event.code, event.reason);
       callbacks.onDisconnect?.();
     };
 
     this.websocket.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error('VaultPilot: WebSocket error:', error);
       callbacks.onError?.('WebSocket connection error');
     };
   }

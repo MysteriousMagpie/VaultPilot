@@ -175,7 +175,20 @@ export class VaultPilotSettingTab extends PluginSettingTab {
     const notice = new Notice('Testing connection...', 0);
     
     try {
-      const response = await this.plugin.apiClient.healthCheck();
+      let response = await this.plugin.apiClient.healthCheck();
+      
+      // If the main health check fails with a 400, try the simple check
+      if (!response.success && response.error?.includes('400')) {
+        console.warn('Main health check failed with 400, trying alternative method');
+        const simpleResponse = await this.plugin.apiClient.simpleHealthCheck();
+        if (simpleResponse.success && simpleResponse.data) {
+          response = {
+            success: true,
+            data: { status: simpleResponse.data.status, version: 'unknown' }
+          };
+        }
+      }
+      
       notice.hide();
       
       if (response.success) {

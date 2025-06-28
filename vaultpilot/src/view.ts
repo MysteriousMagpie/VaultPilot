@@ -90,7 +90,19 @@ export class VaultPilotView extends ItemView {
 
   private async checkBackendStatus(indicator: HTMLElement) {
     try {
-      const response = await this.plugin.apiClient.healthCheck();
+      let response = await this.plugin.apiClient.healthCheck();
+      
+      // If the main health check fails with a 400, try the simple check
+      if (!response.success && response.error?.includes('400')) {
+        const simpleResponse = await this.plugin.apiClient.simpleHealthCheck();
+        if (simpleResponse.success && simpleResponse.data) {
+          response = {
+            success: true,
+            data: { status: simpleResponse.data.status, version: 'unknown' }
+          };
+        }
+      }
+      
       if (response.success) {
         indicator.textContent = '🟢 Connected';
         indicator.className = 'vaultpilot-status-indicator vaultpilot-status-connected';
