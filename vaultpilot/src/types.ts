@@ -35,6 +35,13 @@ export interface ConversationHistory {
   last_updated: string;
 }
 
+export interface ConversationHistoryRequest {
+  conversation_id?: string;
+  limit?: number;
+  offset?: number;
+  include_messages?: boolean;
+}
+
 // Copilot types
 export interface CopilotRequest {
   text: string;

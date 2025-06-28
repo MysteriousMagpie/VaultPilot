@@ -3,6 +3,7 @@ import {
   ChatRequest, 
   ChatResponse, 
   ConversationHistory,
+  ConversationHistoryRequest,
   CopilotRequest, 
   CopilotResponse,
   WorkflowRequest,
@@ -137,10 +138,16 @@ export class EvoAgentXClient {
   }
 
   async getConversationHistory(conversationId?: string): Promise<APIResponse<ConversationHistory[]>> {
-    const endpoint = conversationId 
-      ? `/api/obsidian/conversation/history?conversation_id=${conversationId}`
-      : '/api/obsidian/conversation/history';
-    return this.makeRequest(endpoint, { method: 'POST' });
+    const requestBody: ConversationHistoryRequest = {
+      conversation_id: conversationId,
+      limit: 50,
+      include_messages: true
+    };
+    
+    return this.makeRequest('/api/obsidian/conversation/history', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
   }
 
   async deleteConversation(conversationId: string): Promise<APIResponse<void>> {
