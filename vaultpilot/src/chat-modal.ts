@@ -294,6 +294,7 @@ export class ChatModal extends Modal {
         .vaultpilot-message-content {
           line-height: 1.4;
           color: var(--text-normal);
+          user-select: text;
         }
         .vaultpilot-message-time {
           font-size: 0.8em;
