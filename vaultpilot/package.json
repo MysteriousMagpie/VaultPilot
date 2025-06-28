@@ -1,11 +1,15 @@
 {
   "name": "vaultpilot",
-  "version": "0.0.1",
-  "description": "VaultPilot frontend for EvoAgent X backend",
+  "version": "1.0.0",
+  "description": "VaultPilot - Comprehensive EvoAgentX integration for Obsidian",
   "scripts": {
     "dev": "rollup -c -w",
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "test": "echo \"Tests not implemented yet\""
   },
+  "keywords": ["obsidian", "ai", "agent", "automation", "productivity"],
+  "author": "VaultPilot Team",
+  "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^24.0.1",
     "@rollup/plugin-node-resolve": "^15.0.1",
