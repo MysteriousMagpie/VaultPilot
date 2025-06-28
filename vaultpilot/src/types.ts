@@ -31,14 +31,12 @@ export interface ChatResponse {
 export interface ConversationHistory {
   conversation_id: string;
   messages: ChatMessage[];
-  created_at: string;
-  last_updated: string;
+  total_count: number;
 }
 
 export interface ConversationHistoryRequest {
-  conversation_id?: string;
+  conversation_id: string;  // Required field according to backend API
   limit?: number;
-  offset?: number;
   include_messages?: boolean;
 }
 

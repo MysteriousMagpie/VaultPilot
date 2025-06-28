@@ -137,10 +137,10 @@ export class EvoAgentXClient {
     });
   }
 
-  async getConversationHistory(conversationId?: string): Promise<APIResponse<ConversationHistory[]>> {
+  async getConversationHistory(conversationId: string, limit: number = 50): Promise<APIResponse<ConversationHistory>> {
     const requestBody: ConversationHistoryRequest = {
       conversation_id: conversationId,
-      limit: 50,
+      limit: limit,
       include_messages: true
     };
     

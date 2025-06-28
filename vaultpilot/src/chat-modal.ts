@@ -97,17 +97,19 @@ export class ChatModal extends Modal {
   }
 
   private async loadConversationHistory() {
-    try {
-      const response = await this.plugin.apiClient.getConversationHistory();
-      if (response.success && response.data && response.data.length > 0) {
-        const latestConversation = response.data[0];
-        this.currentConversationId = latestConversation.conversation_id;
-        this.messages = latestConversation.messages;
-        this.renderMessages();
+    // Only try to load conversation history if we have a conversation ID
+    if (this.currentConversationId) {
+      try {
+        const response = await this.plugin.apiClient.getConversationHistory(this.currentConversationId);
+        if (response.success && response.data) {
+          this.messages = response.data.messages;
+          this.renderMessages();
+        }
+      } catch (error) {
+        console.error('Failed to load conversation history:', error);
       }
-    } catch (error) {
-      console.error('Failed to load conversation history:', error);
     }
+    // If no conversation ID, start fresh (no history to load)
   }
 
   private async sendMessage() {
