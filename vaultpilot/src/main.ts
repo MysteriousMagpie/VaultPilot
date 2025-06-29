@@ -1,10 +1,11 @@
-import { Plugin, Notice, Editor, MarkdownView, TFile, EditorPosition } from 'obsidian';
+import { Plugin, Notice, Editor, MarkdownView, TFile, EditorPosition, request } from 'obsidian';
 import { VaultPilotSettingTab, DEFAULT_SETTINGS } from './settings';
 import { VIEW_TYPE_VAULTPILOT, VaultPilotView } from './view';
 import { ChatModal } from './chat-modal';
 import { WorkflowModal } from './workflow-modal';
 import { EvoAgentXClient } from './api-client';
 import { VaultPilotSettings, CopilotResponse } from './types';
+import { fetchSchedule, injectSchedule, validateScheduleMarkdown } from './planner';
 
 export default class VaultPilotPlugin extends Plugin {
   settings!: VaultPilotSettings;
@@ -96,6 +97,12 @@ export default class VaultPilotPlugin extends Plugin {
       id: 'plan-tasks',
       name: 'Plan Tasks from Note',
       editorCallback: (editor: Editor) => this.planTasksFromNote(editor)
+    });
+
+    this.addCommand({
+      id: 'plan-my-day',
+      name: 'Plan My Day',
+      callback: () => this.planMyDay()
     });
 
     this.addCommand({
@@ -320,7 +327,7 @@ export default class VaultPilotPlugin extends Plugin {
         
         if (response.data.plan.tasks && response.data.plan.tasks.length > 0) {
           taskContent += `## Tasks\n\n`;
-          response.data.plan.tasks.forEach(task => {
+          response.data.plan.tasks.forEach((task: any) => {
             const checkbox = task.status === 'completed' ? '[x]' : '[ ]';
             taskContent += `${checkbox} **${task.title}** (${task.priority} priority)\n`;
             taskContent += `   ${task.description}\n`;
@@ -330,7 +337,7 @@ export default class VaultPilotPlugin extends Plugin {
 
         if (response.data.milestones && response.data.milestones.length > 0) {
           taskContent += `## Milestones\n\n`;
-          response.data.milestones.forEach(milestone => {
+          response.data.milestones.forEach((milestone: any) => {
             taskContent += `- **${milestone.title}** (${milestone.target_date})\n`;
             taskContent += `  ${milestone.description}\n\n`;
           });
@@ -344,6 +351,59 @@ export default class VaultPilotPlugin extends Plugin {
     } catch (error) {
       notice.hide();
       new Notice(`Task planning error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async planMyDay() {
+    const activeFile = this.app.workspace.getActiveFile();
+    
+    if (!activeFile) {
+      new Notice('No active note—open today\'s daily note first.');
+      return;
+    }
+
+    const notice = new Notice('Planning your day...', 0);
+
+    try {
+      // Read the entire file content
+      const fileText = await this.app.vault.read(activeFile);
+      
+      // Fetch schedule from API
+      const { scheduleMarkdown, headline } = await fetchSchedule(fileText);
+
+      // Validate the returned schedule
+      if (!validateScheduleMarkdown(scheduleMarkdown)) {
+        throw new Error('Invalid schedule data received from API');
+      }
+
+      // Inject the schedule into the note
+      const updatedText = injectSchedule(fileText, scheduleMarkdown);
+
+      // Update the file
+      await this.app.vault.modify(activeFile, updatedText);
+
+      // Hide the progress notice
+      notice.hide();
+
+      // Show success notice
+      const successMessage = headline ? `${headline} ✅` : 'Schedule inserted ✅';
+      new Notice(successMessage);
+
+    } catch (error) {
+      notice.hide();
+      
+      // Handle different types of errors
+      if (error instanceof Error) {
+        if (error.message.includes('JSON')) {
+          new Notice('Planner API error: Invalid response format');
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+          new Notice('Planner API error: Unable to connect to localhost:3000');
+        } else {
+          new Notice(`Planner API error: ${error.message}`);
+        }
+      } else {
+        new Notice('Planner API error: Unknown error occurred');
+      }
     }
   }
 

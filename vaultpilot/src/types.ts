@@ -218,6 +218,16 @@ export interface VaultPilotSettings {
   debugMode: boolean;
 }
 
+// Planner types for "Plan My Day" feature
+export interface PlannerResponse {
+  scheduleMarkdown: string;
+  headline: string;
+}
+
+export interface PlannerRequest {
+  note: string;
+}
+
 // Error types
 export interface ErrorResponse {
   error: string;
