@@ -249,6 +249,12 @@ export default class VaultPilotPlugin extends Plugin {
     const textBeforeCursor = currentLine.substring(0, cursor.ch);
     const fullText = editor.getValue();
 
+    // Client-side validation to prevent 422 errors
+    if (!fullText || fullText.trim().length === 0) {
+      new Notice('Cannot complete empty text');
+      return;
+    }
+
     try {
       const response = await this.apiClient.getCopilotCompletion({
         text: fullText,
@@ -429,11 +435,48 @@ export default class VaultPilotPlugin extends Plugin {
     const target = event.target as HTMLElement;
     if (!target.classList.contains('cm-content')) return;
 
-    // Debounce auto-completion requests
+    // Only trigger on specific keys and conditions
+    if (!this.shouldTriggerAutoComplete(event)) return;
+
+    // Debounce auto-completion requests with longer delay
     clearTimeout((this as any).autoCompleteTimeout);
     (this as any).autoCompleteTimeout = setTimeout(() => {
       this.triggerAutoCompletion();
-    }, 1000);
+    }, 3000); // Increased to 3 seconds
+  }
+
+  private shouldTriggerAutoComplete(event: KeyboardEvent): boolean {
+    // Don't trigger on navigation or modifier keys
+    const nonTriggerKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Shift', 'Control', 'Alt', 'Meta', 'Escape'];
+    if (nonTriggerKeys.indexOf(event.key) !== -1) {
+      return false;
+    }
+
+    const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!activeView) return false;
+
+    const editor = activeView.editor;
+    const cursor = editor.getCursor();
+    const currentLine = editor.getLine(cursor.line);
+    
+    // Only trigger at the end of a line
+    if (cursor.ch !== currentLine.length) return false;
+    
+    // Check for sentence-ending triggers
+    const triggerChars = ['.', '!', '?', ':', '\n'];
+    const lastChar = currentLine.slice(-1);
+    
+    // Trigger after sentence endings with space
+    if (triggerChars.indexOf(lastChar) !== -1 && event.key === ' ') {
+      return true;
+    }
+    
+    // Trigger after Enter key (new line)
+    if (event.key === 'Enter' && currentLine.trim().length > 10) {
+      return true;
+    }
+    
+    return false;
   }
 
   private async triggerAutoCompletion() {
@@ -443,13 +486,24 @@ export default class VaultPilotPlugin extends Plugin {
     const editor = activeView.editor;
     const cursor = editor.getCursor();
     const currentLine = editor.getLine(cursor.line);
+    const fullText = editor.getValue();
     
-    // Only trigger if line has some content and cursor is at end
-    if (currentLine.trim().length < 3 || cursor.ch !== currentLine.length) return;
+    // More restrictive conditions for auto-completion
+    if (currentLine.trim().length < 10 || cursor.ch !== currentLine.length) return;
+    
+    // Prevent 422 errors from empty text
+    if (!fullText || fullText.trim().length === 0) return;
+
+    // Add cooldown to prevent too frequent requests
+    const now = Date.now();
+    const lastRequest = (this as any).lastAutoCompleteRequest || 0;
+    if (now - lastRequest < 10000) return; // 10 second cooldown
+    
+    (this as any).lastAutoCompleteRequest = now;
 
     try {
       const response = await this.apiClient.getCopilotCompletion({
-        text: editor.getValue(),
+        text: fullText,
         cursor_position: editor.posToOffset(cursor),
         file_type: 'markdown'
       });
@@ -457,7 +511,7 @@ export default class VaultPilotPlugin extends Plugin {
       if (response.success && response.data && response.data.suggestions.length > 0) {
         // Show suggestions (for now just show first suggestion)
         if (this.settings.debugMode) {
-          new Notice(`Suggestion: ${response.data.suggestions[0]}`, 3000);
+          new Notice(`Auto-suggestion: ${response.data.suggestions[0]}`, 3000);
         }
       }
     } catch (error) {

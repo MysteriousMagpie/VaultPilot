@@ -226,6 +226,36 @@ Parse user input with intelligence analysis.
 }
 ```
 
+#### POST `/api/obsidian/copilot/complete`
+Get AI text completion for the current cursor position.
+
+**Request Body:**
+```javascript
+{
+  "text": "The full text to complete or continue",    // Required: string - Main text to complete
+  "cursor_position": 42,                             // Required: number - 0-based cursor position
+  "file_type": "markdown",                           // Optional: string - File type (e.g., "markdown", "python")
+  "context": "Optional extra context"                // Optional: string - Additional context for completion
+}
+```
+
+**Response:**
+```javascript
+{
+  "completion": "suggested text continuation...",    // string - The completion text
+  "confidence": 0.85,                               // number - Confidence score (0-1)
+  "suggestions": [                                  // array - Alternative suggestions
+    "first alternative completion",
+    "second alternative completion"
+  ]
+}
+```
+
+**Validation Notes:**
+- `text` field must not be empty (will return HTTP 422 if empty)
+- `cursor_position` must be a valid integer within the text bounds
+- If required fields are missing or invalid, the server returns a 422 error
+
 ---
 
 ### 4. Calendar API
@@ -419,6 +449,16 @@ class EvoAgentXAPI {
   async runWorkflow(goal) {
     return await this.post('/run', {
       goal
+    });
+  }
+
+  // Get copilot completion
+  async getCopilotCompletion(text, cursorPosition, fileType = 'markdown', context = null) {
+    return await this.post('/api/obsidian/copilot/complete', {
+      text,
+      cursor_position: cursorPosition,
+      file_type: fileType,
+      context
     });
   }
 

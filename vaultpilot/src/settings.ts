@@ -7,8 +7,9 @@ export const DEFAULT_SETTINGS: VaultPilotSettings = {
   apiKey: '',
   enableWebSocket: true,
   enableCopilot: true,
-  enableAutoComplete: true,
+  enableAutoComplete: false, // Disabled by default to prevent frequent requests
   defaultAgent: '',
+  defaultMode: 'ask',
   chatHistoryLimit: 100,
   debugMode: false
 };
@@ -105,7 +106,7 @@ export class VaultPilotSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Enable Auto-Complete')
-      .setDesc('Automatically suggest completions as you type')
+      .setDesc('Automatically suggest completions after sentence endings and new lines (with 10s cooldown)')
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.enableAutoComplete)
@@ -127,6 +128,20 @@ export class VaultPilotSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.defaultAgent || '')
           .onChange(async value => {
             this.plugin.settings.defaultAgent = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Default Chat Mode')
+      .setDesc('Default mode for new chat sessions: Ask for simple Q&A, Agent for complex workflows')
+      .addDropdown(dropdown =>
+        dropdown
+          .addOption('ask', 'Ask Mode - Simple Q&A')
+          .addOption('agent', 'Agent Mode - Complex Workflows')
+          .setValue(this.plugin.settings.defaultMode)
+          .onChange(async value => {
+            this.plugin.settings.defaultMode = value as 'ask' | 'agent';
             await this.plugin.saveSettings();
           })
       );

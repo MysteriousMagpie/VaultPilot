@@ -11,10 +11,13 @@ export class ChatModal extends Modal {
   private sendButton!: HTMLButtonElement;
   private currentConversationId: string | null = null;
   private messages: ChatMessage[] = [];
+  private currentMode: 'ask' | 'agent' = 'ask';
+  private modeToggleContainer!: HTMLElement;
 
   constructor(app: App, plugin: VaultPilotPlugin) {
     super(app);
     this.plugin = plugin;
+    this.currentMode = plugin.settings.defaultMode;
   }
 
   onOpen() {
@@ -27,6 +30,10 @@ export class ChatModal extends Modal {
     headerEl.createEl('h2', { text: '🤖 VaultPilot Chat' });
     
     const toolbarEl = headerEl.createEl('div', { cls: 'vaultpilot-chat-toolbar' });
+    
+    // Mode toggle
+    this.modeToggleContainer = toolbarEl.createEl('div', { cls: 'vaultpilot-mode-toggle' });
+    this.createModeToggle();
     
     // Clear chat button
     const clearBtn = toolbarEl.createEl('button', { 
@@ -51,7 +58,7 @@ export class ChatModal extends Modal {
     
     this.inputEl = this.inputContainer.createEl('input', {
       type: 'text',
-      placeholder: 'Ask me anything about your vault...',
+      placeholder: this.getPlaceholderText(),
       cls: 'vaultpilot-chat-input'
     });
 
@@ -140,7 +147,8 @@ export class ChatModal extends Modal {
         message,
         conversation_id: this.currentConversationId || undefined,
         vault_context: vaultContext,
-        agent_id: this.getSelectedAgent()
+        agent_id: this.getSelectedAgent(),
+        mode: this.currentMode
       });
 
       if (response.success && response.data) {
@@ -251,6 +259,42 @@ export class ChatModal extends Modal {
           display: flex;
           gap: 10px;
           align-items: center;
+          flex-wrap: wrap;
+        }
+        .vaultpilot-mode-toggle {
+          margin-right: 15px;
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 6px;
+          padding: 8px;
+          background: var(--background-secondary);
+        }
+        .vaultpilot-mode-description {
+          font-size: 0.8em;
+          color: var(--text-muted);
+          margin-bottom: 6px;
+        }
+        .vaultpilot-mode-buttons {
+          display: flex;
+          gap: 4px;
+        }
+        .vaultpilot-mode-btn {
+          padding: 4px 12px;
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 4px;
+          background: var(--background-primary);
+          color: var(--text-muted);
+          font-size: 0.85em;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .vaultpilot-mode-btn:hover {
+          background: var(--background-primary-alt);
+          color: var(--text-normal);
+        }
+        .vaultpilot-mode-btn.active {
+          background: var(--interactive-accent);
+          color: var(--text-on-accent);
+          border-color: var(--interactive-accent);
         }
         .vaultpilot-agent-select {
           padding: 4px 8px;
@@ -316,9 +360,83 @@ export class ChatModal extends Modal {
         .vaultpilot-send-button {
           padding: 10px 20px;
         }
+        .vaultpilot-mode-toggle {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .vaultpilot-mode-description {
+          font-size: 0.9em;
+          color: var(--text-muted);
+        }
+        .vaultpilot-mode-buttons {
+          display: flex;
+          gap: 10px;
+        }
+        .vaultpilot-mode-btn {
+          flex: 1;
+          padding: 8px;
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 4px;
+          background: var(--background-primary);
+          color: var(--text-normal);
+          cursor: pointer;
+          text-align: center;
+        }
+        .vaultpilot-mode-btn.active {
+          background: var(--accent-color);
+          color: var(--background-primary);
+          font-weight: bold;
+        }
       `;
       document.head.appendChild(styleEl);
     }
+  }
+
+  private createModeToggle() {
+    this.modeToggleContainer.empty();
+    
+    // Mode description
+    const modeDesc = this.modeToggleContainer.createEl('div', { 
+      cls: 'vaultpilot-mode-description',
+      text: this.getModeDescription()
+    });
+    
+    // Mode buttons
+    const modeButtons = this.modeToggleContainer.createEl('div', { cls: 'vaultpilot-mode-buttons' });
+    
+    const askBtn = modeButtons.createEl('button', {
+      text: 'Ask Mode',
+      cls: `vaultpilot-mode-btn ${this.currentMode === 'ask' ? 'active' : ''}`
+    });
+    
+    const agentBtn = modeButtons.createEl('button', {
+      text: 'Agent Mode', 
+      cls: `vaultpilot-mode-btn ${this.currentMode === 'agent' ? 'active' : ''}`
+    });
+    
+    askBtn.onclick = () => this.setMode('ask');
+    agentBtn.onclick = () => this.setMode('agent');
+  }
+
+  private setMode(mode: 'ask' | 'agent') {
+    this.currentMode = mode;
+    this.createModeToggle(); // Refresh the toggle UI
+    if (this.inputEl) {
+      this.inputEl.placeholder = this.getPlaceholderText();
+    }
+  }
+
+  private getPlaceholderText(): string {
+    return this.currentMode === 'ask' 
+      ? 'Ask a question...'
+      : 'Describe what you want to accomplish...';
+  }
+
+  private getModeDescription(): string {
+    return this.currentMode === 'ask'
+      ? 'Simple Q&A mode for quick questions and explanations'
+      : 'Complex workflow mode for structured tasks and automation';
   }
 
   onClose() {

@@ -20,6 +20,7 @@ export interface ChatRequest {
   conversation_id?: string;
   vault_context?: string;
   agent_id?: string;
+  mode?: 'ask' | 'agent'; // Default: "ask"
 }
 
 export interface ChatResponse {
@@ -214,6 +215,7 @@ export interface VaultPilotSettings {
   enableCopilot: boolean;
   enableAutoComplete: boolean;
   defaultAgent?: string;
+  defaultMode: 'ask' | 'agent';
   chatHistoryLimit: number;
   debugMode: boolean;
 }
