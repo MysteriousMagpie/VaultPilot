@@ -1,6 +1,7 @@
 import { Modal, App, Setting, Notice } from 'obsidian';
 import type VaultPilotPlugin from './main';
 import { ChatMessage, Intent } from './types';
+import { getActiveMarkdown } from './vault-utils';
 
 export class ChatModal extends Modal {
   plugin: VaultPilotPlugin;
@@ -132,32 +133,24 @@ export class ChatModal extends Modal {
     this.inputEl.value = '';
 
     try {
-      // Get vault context if available
-      const activeFile = this.app.workspace.getActiveFile();
-      let vaultContext = '';
-      
-      if (activeFile) {
-        const content = await this.app.vault.read(activeFile);
-        vaultContext = `Current file: ${activeFile.name}\n\nContent:\n${content}`;
-      }
+      // ── fetch context & intent in parallel ──────────────────────────────
+      const [context, intentRes] = await Promise.all([
+        getActiveMarkdown(),          // returns string | null
+        this.plugin.apiClient.classifyIntent(message)  // POST /intelligence/parse
+      ]);
 
-      // Classify intent automatically
-      const { intent } = await this.plugin.apiClient.classifyIntent(message);
-      
+      // build a generic payload; context may be null/empty
+      const payload = { message, context };
+
       // Show intent detection in UI if debug mode is enabled
       if (this.plugin.settings.showIntentDebug) {
-        this.showIntentDebug(intent);
+        this.showIntentDebug(intentRes.intent);
       }
 
       let response;
       
-      // Branch based on detected intent
-      if (intent === "agent") {
-        // Use workflow/agent mode
-        response = await this.plugin.apiClient.executeWorkflow({
-          goal: message,
-          context: vaultContext
-        });
+      if (intentRes.intent === "agent") {
+        response = await this.plugin.apiClient.runWorkflow(payload);     // POST /workflow
         
         if (response.success && response.data) {
           this.addMessage('assistant', `⚙️ Agent Mode (auto-detected)\n\n${response.data.result}`);
@@ -165,21 +158,22 @@ export class ChatModal extends Modal {
           this.addMessage('assistant', `Error in agent mode: ${response.error || 'Failed to get response'}`);
         }
       } else {
-        // Use chat/ask mode
-        response = await this.plugin.apiClient.chat({
-          message,
+        response = await this.plugin.apiClient.sendChat(payload, {
           conversation_id: this.currentConversationId || undefined,
-          vault_context: vaultContext,
-          agent_id: this.getSelectedAgent(),
-          mode: 'ask'
-        });
-
+          agent_id: this.getSelectedAgent()
+        });        // POST /chat
+        
         if (response.success && response.data) {
           this.currentConversationId = response.data.conversation_id;
           this.addMessage('assistant', response.data.response);
         } else {
           this.addMessage('assistant', `Error: ${response.error || 'Failed to get response'}`);
         }
+      }
+
+      // Warn user if they had context disabled
+      if (!context?.length) {
+        new Notice("⚠️ No vault content was sent; replies may be generic.");
       }
 
       if (!response.success) {

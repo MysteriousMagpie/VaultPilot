@@ -175,6 +175,30 @@ export class EvoAgentXClient {
     });
   }
 
+  // New unified API methods for simplified context packaging
+  async runWorkflow(payload: { message: string; context: string | null }): Promise<APIResponse<WorkflowResponse>> {
+    return this.makeRequest('/api/obsidian/workflow', {
+      method: 'POST',
+      body: JSON.stringify({
+        goal: payload.message,
+        context: payload.context || undefined
+      }),
+    });
+  }
+
+  async sendChat(payload: { message: string; context: string | null }, options?: { conversation_id?: string; agent_id?: string }): Promise<APIResponse<ChatResponse>> {
+    return this.makeRequest('/api/obsidian/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        message: payload.message,
+        vault_context: payload.context || undefined,
+        conversation_id: options?.conversation_id,
+        agent_id: options?.agent_id,
+        mode: 'ask'
+      }),
+    });
+  }
+
   // Agent management
   async getAgents(): Promise<APIResponse<Agent[]>> {
     return this.makeRequest('/api/obsidian/agents');

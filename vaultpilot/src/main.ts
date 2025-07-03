@@ -6,6 +6,7 @@ import { WorkflowModal } from './workflow-modal';
 import { EvoAgentXClient } from './api-client';
 import { VaultPilotSettings, CopilotResponse } from './types';
 import { fetchSchedule, injectSchedule, validateScheduleMarkdown } from './planner';
+import { setApp } from './vault-utils';
 
 export default class VaultPilotPlugin extends Plugin {
   settings!: VaultPilotSettings;
@@ -15,6 +16,9 @@ export default class VaultPilotPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+
+    // Initialize app instance for vault-utils
+    setApp(this.app);
 
     // Initialize API client
     this.apiClient = new EvoAgentXClient(this.settings.backendUrl, this.settings.apiKey);
