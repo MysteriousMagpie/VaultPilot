@@ -1,6 +1,7 @@
 import { Plugin, Notice, Editor, MarkdownView, TFile, EditorPosition, request } from 'obsidian';
 import { VaultPilotSettingTab, DEFAULT_SETTINGS } from './settings';
 import { VIEW_TYPE_VAULTPILOT, VaultPilotView } from './view';
+import { VIEW_TYPE_VAULTPILOT_FULL_TAB, VaultPilotFullTabView } from './full-tab-view';
 import { ChatModal } from './chat-modal';
 import { WorkflowModal } from './workflow-modal';
 import { EvoAgentXClient } from './api-client';
@@ -54,17 +55,29 @@ export default class VaultPilotPlugin extends Plugin {
       new Notice('⚠️ Cannot connect to EvoAgentX backend', 5000);
     }
 
-    // Register view
+    // Register views
     this.registerView(
       VIEW_TYPE_VAULTPILOT,
       (leaf) => new VaultPilotView(leaf, this)
     );
+    
+    this.registerView(
+      VIEW_TYPE_VAULTPILOT_FULL_TAB,
+      (leaf) => new VaultPilotFullTabView(leaf, this)
+    );
 
     // Add ribbon icon
     const ribbonIconEl = this.addRibbonIcon('bot', 'VaultPilot', (evt: MouseEvent) => {
-      this.openChatModal();
+      if (evt.ctrlKey || evt.metaKey) {
+        // Open full tab view on Ctrl/Cmd + click
+        this.activateFullTabView();
+      } else {
+        // Default action: open chat modal
+        this.openChatModal();
+      }
     });
     ribbonIconEl.addClass('vaultpilot-ribbon-class');
+    ribbonIconEl.title = 'VaultPilot (Ctrl+click for Dashboard)';
 
     // Register commands
     this.addCommand({
@@ -115,6 +128,12 @@ export default class VaultPilotPlugin extends Plugin {
       callback: () => this.activateView()
     });
 
+    this.addCommand({
+      id: 'open-vaultpilot-full-tab',
+      name: 'Open VaultPilot Dashboard',
+      callback: () => this.activateFullTabView()
+    });
+
     // Register editor events for copilot
     if (this.settings.enableCopilot && this.settings.enableAutoComplete) {
       this.registerDomEvent(document, 'keyup', this.handleKeyUp.bind(this));
@@ -126,6 +145,7 @@ export default class VaultPilotPlugin extends Plugin {
 
   onunload() {
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_VAULTPILOT);
+    this.app.workspace.detachLeavesOfType(VIEW_TYPE_VAULTPILOT_FULL_TAB);
     this.disconnectWebSocket();
   }
 
@@ -430,6 +450,22 @@ export default class VaultPilotPlugin extends Plugin {
       if (rightLeaf) {
         await rightLeaf.setViewState({
           type: VIEW_TYPE_VAULTPILOT,
+          active: true
+        });
+      }
+    } else {
+      this.app.workspace.revealLeaf(leaves[0]);
+    }
+  }
+
+  async activateFullTabView() {
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_VAULTPILOT_FULL_TAB);
+    if (leaves.length === 0) {
+      // Create a new tab in the main workspace
+      const newLeaf = this.app.workspace.getLeaf('tab');
+      if (newLeaf) {
+        await newLeaf.setViewState({
+          type: VIEW_TYPE_VAULTPILOT_FULL_TAB,
           active: true
         });
       }

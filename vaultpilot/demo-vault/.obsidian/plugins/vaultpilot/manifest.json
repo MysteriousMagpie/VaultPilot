@@ -1,0 +1,11 @@
+{
+  "id": "vaultpilot",
+  "name": "VaultPilot",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Comprehensive EvoAgentX integration for Obsidian - AI chat, copilot, workflows, and vault analysis",
+  "author": "VaultPilot Team",
+  "authorUrl": "https://github.com/malachiledbetter/VaultPilot",
+  "isDesktopOnly": false,
+  "main": "dist/main.js"
+}

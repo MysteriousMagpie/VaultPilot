@@ -129,6 +129,13 @@ export class VaultPilotView extends ItemView {
     });
     chatButton.onclick = () => this.plugin.openChatModal();
 
+    // Dashboard action (new)
+    const dashboardButton = actionsGrid.createEl('button', {
+      text: '📊 Open Dashboard',
+      cls: 'vaultpilot-action-button'
+    });
+    dashboardButton.onclick = () => this.plugin.activateFullTabView();
+
     // Workflow action
     const workflowButton = actionsGrid.createEl('button', {
       text: '⚙️ Execute Workflow',

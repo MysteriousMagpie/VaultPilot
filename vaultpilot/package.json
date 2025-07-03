@@ -11,7 +11,13 @@
     "copy:watch": "nodemon --watch dist --ext js,json --exec \"npm run copy:demo\"",
     "copy:demo": "mkdir -p demo-vault/.obsidian/plugins/vaultpilot && cp dist/main.js manifest.json demo-vault/.obsidian/plugins/vaultpilot/"
   },
-  "keywords": ["obsidian", "ai", "agent", "automation", "productivity"],
+  "keywords": [
+    "obsidian",
+    "ai",
+    "agent",
+    "automation",
+    "productivity"
+  ],
   "author": "VaultPilot Team",
   "license": "MIT",
   "devDependencies": {
@@ -20,6 +26,7 @@
     "@rollup/plugin-terser": "^0.4.3",
     "@types/jest": "^29.5.5",
     "concurrently": "^8.2.1",
+    "express": "^5.1.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "nodemon": "^3.0.1",
