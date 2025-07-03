@@ -1,6 +1,6 @@
 import { Modal, App, Setting, Notice } from 'obsidian';
 import type VaultPilotPlugin from './main';
-import { ChatMessage } from './types';
+import { ChatMessage, Intent } from './types';
 
 export class ChatModal extends Modal {
   plugin: VaultPilotPlugin;
@@ -11,13 +11,10 @@ export class ChatModal extends Modal {
   private sendButton!: HTMLButtonElement;
   private currentConversationId: string | null = null;
   private messages: ChatMessage[] = [];
-  private currentMode: 'ask' | 'agent' = 'ask';
-  private modeToggleContainer!: HTMLElement;
 
   constructor(app: App, plugin: VaultPilotPlugin) {
     super(app);
     this.plugin = plugin;
-    this.currentMode = plugin.settings.defaultMode;
   }
 
   onOpen() {
@@ -31,9 +28,11 @@ export class ChatModal extends Modal {
     
     const toolbarEl = headerEl.createEl('div', { cls: 'vaultpilot-chat-toolbar' });
     
-    // Mode toggle
-    this.modeToggleContainer = toolbarEl.createEl('div', { cls: 'vaultpilot-mode-toggle' });
-    this.createModeToggle();
+    // Add info about automatic mode detection
+    const autoModeInfo = toolbarEl.createEl('div', { 
+      cls: 'vaultpilot-auto-mode-info',
+      text: '⚡ Automatic mode detection enabled'
+    });
     
     // Clear chat button
     const clearBtn = toolbarEl.createEl('button', { 
@@ -58,7 +57,7 @@ export class ChatModal extends Modal {
     
     this.inputEl = this.inputContainer.createEl('input', {
       type: 'text',
-      placeholder: this.getPlaceholderText(),
+      placeholder: 'Ask a question or describe what you want to accomplish...',
       cls: 'vaultpilot-chat-input'
     });
 
@@ -142,20 +141,48 @@ export class ChatModal extends Modal {
         vaultContext = `Current file: ${activeFile.name}\n\nContent:\n${content}`;
       }
 
-      // Send to API
-      const response = await this.plugin.apiClient.chat({
-        message,
-        conversation_id: this.currentConversationId || undefined,
-        vault_context: vaultContext,
-        agent_id: this.getSelectedAgent(),
-        mode: this.currentMode
-      });
+      // Classify intent automatically
+      const { intent } = await this.plugin.apiClient.classifyIntent(message);
+      
+      // Show intent detection in UI if debug mode is enabled
+      if (this.plugin.settings.showIntentDebug) {
+        this.showIntentDebug(intent);
+      }
 
-      if (response.success && response.data) {
-        this.currentConversationId = response.data.conversation_id;
-        this.addMessage('assistant', response.data.response);
+      let response;
+      
+      // Branch based on detected intent
+      if (intent === "agent") {
+        // Use workflow/agent mode
+        response = await this.plugin.apiClient.executeWorkflow({
+          goal: message,
+          context: vaultContext
+        });
+        
+        if (response.success && response.data) {
+          this.addMessage('assistant', `⚙️ Agent Mode (auto-detected)\n\n${response.data.result}`);
+        } else {
+          this.addMessage('assistant', `Error in agent mode: ${response.error || 'Failed to get response'}`);
+        }
       } else {
-        this.addMessage('assistant', `Error: ${response.error || 'Failed to get response'}`);
+        // Use chat/ask mode
+        response = await this.plugin.apiClient.chat({
+          message,
+          conversation_id: this.currentConversationId || undefined,
+          vault_context: vaultContext,
+          agent_id: this.getSelectedAgent(),
+          mode: 'ask'
+        });
+
+        if (response.success && response.data) {
+          this.currentConversationId = response.data.conversation_id;
+          this.addMessage('assistant', response.data.response);
+        } else {
+          this.addMessage('assistant', `Error: ${response.error || 'Failed to get response'}`);
+        }
+      }
+
+      if (!response.success) {
         new Notice(`Chat error: ${response.error}`);
       }
     } catch (error) {
@@ -261,40 +288,17 @@ export class ChatModal extends Modal {
           align-items: center;
           flex-wrap: wrap;
         }
-        .vaultpilot-mode-toggle {
+        .vaultpilot-auto-mode-info {
           margin-right: 15px;
+          padding: 8px 12px;
           border: 1px solid var(--background-modifier-border);
           border-radius: 6px;
-          padding: 8px;
           background: var(--background-secondary);
-        }
-        .vaultpilot-mode-description {
-          font-size: 0.8em;
-          color: var(--text-muted);
-          margin-bottom: 6px;
-        }
-        .vaultpilot-mode-buttons {
-          display: flex;
-          gap: 4px;
-        }
-        .vaultpilot-mode-btn {
-          padding: 4px 12px;
-          border: 1px solid var(--background-modifier-border);
-          border-radius: 4px;
-          background: var(--background-primary);
-          color: var(--text-muted);
           font-size: 0.85em;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .vaultpilot-mode-btn:hover {
-          background: var(--background-primary-alt);
-          color: var(--text-normal);
-        }
-        .vaultpilot-mode-btn.active {
-          background: var(--interactive-accent);
-          color: var(--text-on-accent);
-          border-color: var(--interactive-accent);
+          color: var(--text-muted);
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
         .vaultpilot-agent-select {
           padding: 4px 8px;
@@ -360,83 +364,39 @@ export class ChatModal extends Modal {
         .vaultpilot-send-button {
           padding: 10px 20px;
         }
-        .vaultpilot-mode-toggle {
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
-        .vaultpilot-mode-description {
-          font-size: 0.9em;
-          color: var(--text-muted);
-        }
-        .vaultpilot-mode-buttons {
-          display: flex;
-          gap: 10px;
-        }
-        .vaultpilot-mode-btn {
-          flex: 1;
-          padding: 8px;
-          border: 1px solid var(--background-modifier-border);
-          border-radius: 4px;
-          background: var(--background-primary);
+        .vaultpilot-intent-debug {
+          background: var(--background-modifier-success);
           color: var(--text-normal);
-          cursor: pointer;
+          padding: 8px 12px;
+          border-radius: 4px;
+          margin: 8px 0;
+          font-size: 0.85em;
           text-align: center;
+          border: 1px solid var(--background-modifier-border-hover);
+          animation: fadeInOut 3s ease-in-out;
         }
-        .vaultpilot-mode-btn.active {
-          background: var(--accent-color);
-          color: var(--background-primary);
-          font-weight: bold;
+        @keyframes fadeInOut {
+          0% { opacity: 0; transform: translateY(-10px); }
+          10% { opacity: 1; transform: translateY(0); }
+          90% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-10px); }
         }
       `;
       document.head.appendChild(styleEl);
     }
   }
 
-  private createModeToggle() {
-    this.modeToggleContainer.empty();
-    
-    // Mode description
-    const modeDesc = this.modeToggleContainer.createEl('div', { 
-      cls: 'vaultpilot-mode-description',
-      text: this.getModeDescription()
+  private showIntentDebug(intent: string) {
+    // Create a subtle notification showing the detected intent
+    const debugEl = this.messagesEl.createEl('div', {
+      cls: 'vaultpilot-intent-debug',
+      text: `🔍 Intent detected: ${intent === 'agent' ? '⚙️ Agent Mode' : '💬 Ask Mode'}`
     });
     
-    // Mode buttons
-    const modeButtons = this.modeToggleContainer.createEl('div', { cls: 'vaultpilot-mode-buttons' });
-    
-    const askBtn = modeButtons.createEl('button', {
-      text: 'Ask Mode',
-      cls: `vaultpilot-mode-btn ${this.currentMode === 'ask' ? 'active' : ''}`
-    });
-    
-    const agentBtn = modeButtons.createEl('button', {
-      text: 'Agent Mode', 
-      cls: `vaultpilot-mode-btn ${this.currentMode === 'agent' ? 'active' : ''}`
-    });
-    
-    askBtn.onclick = () => this.setMode('ask');
-    agentBtn.onclick = () => this.setMode('agent');
-  }
-
-  private setMode(mode: 'ask' | 'agent') {
-    this.currentMode = mode;
-    this.createModeToggle(); // Refresh the toggle UI
-    if (this.inputEl) {
-      this.inputEl.placeholder = this.getPlaceholderText();
-    }
-  }
-
-  private getPlaceholderText(): string {
-    return this.currentMode === 'ask' 
-      ? 'Ask a question...'
-      : 'Describe what you want to accomplish...';
-  }
-
-  private getModeDescription(): string {
-    return this.currentMode === 'ask'
-      ? 'Simple Q&A mode for quick questions and explanations'
-      : 'Complex workflow mode for structured tasks and automation';
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      debugEl.remove();
+    }, 3000);
   }
 
   onClose() {

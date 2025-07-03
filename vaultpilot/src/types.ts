@@ -1,5 +1,21 @@
 // EvoAgentX API Type Definitions
 
+// Intent classification types
+export type Intent = "ask" | "agent";
+
+export interface IntentResult {
+  intent: Intent;
+  confidence: number;
+}
+
+export interface IntentDebug {
+  intent: Intent;
+  confidence: number;
+  matched_example?: string;
+  reasoning?: string;
+  features?: Record<string, number>;
+}
+
 // Base response structure
 export interface APIResponse<T = any> {
   success: boolean;
@@ -195,7 +211,7 @@ export interface MemoryUpdateRequest {
 
 // WebSocket types
 export interface WebSocketMessage {
-  type: 'chat' | 'workflow_progress' | 'copilot' | 'vault_sync' | 'error';
+  type: 'chat' | 'workflow_progress' | 'copilot' | 'vault_sync' | 'intent_debug' | 'error';
   data: any;
   timestamp: string;
 }
@@ -218,6 +234,7 @@ export interface VaultPilotSettings {
   defaultMode: 'ask' | 'agent';
   chatHistoryLimit: number;
   debugMode: boolean;
+  showIntentDebug: boolean;
 }
 
 // Planner types for "Plan My Day" feature

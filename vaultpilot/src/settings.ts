@@ -11,7 +11,8 @@ export const DEFAULT_SETTINGS: VaultPilotSettings = {
   defaultAgent: '',
   defaultMode: 'ask',
   chatHistoryLimit: 100,
-  debugMode: false
+  debugMode: false,
+  showIntentDebug: false
 };
 
 export class VaultPilotSettingTab extends PluginSettingTab {
@@ -171,6 +172,18 @@ export class VaultPilotSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.debugMode)
           .onChange(async value => {
             this.plugin.settings.debugMode = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Show Intent Debug Overlay')
+      .setDesc('Display automatic intent detection in chat (Ask vs Agent mode)')
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.showIntentDebug)
+          .onChange(async value => {
+            this.plugin.settings.showIntentDebug = value;
             await this.plugin.saveSettings();
           })
       );

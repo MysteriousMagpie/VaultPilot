@@ -19,7 +19,10 @@ import {
   IntelligenceParseResponse,
   MemoryUpdateRequest,
   WebSocketMessage,
-  ErrorResponse
+  ErrorResponse,
+  Intent,
+  IntentResult,
+  IntentDebug
 } from './types';
 
 export class EvoAgentXClient {
@@ -215,6 +218,40 @@ export class EvoAgentXClient {
     });
   }
 
+  // Intent classification
+  async classifyIntent(message: string): Promise<IntentResult> {
+    const response = await this.makeRequest<IntentResult>('/api/obsidian/intelligence/parse', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+    
+    if (response.success && response.data) {
+      return response.data;
+    }
+    
+    // Fallback to 'ask' mode if classification fails
+    return { intent: 'ask', confidence: 0.5 };
+  }
+
+  // Optional: Debug intent classification
+  async explainIntent(message: string): Promise<IntentDebug> {
+    const response = await this.makeRequest<IntentDebug>('/api/obsidian/intelligence/parse', {
+      method: 'POST',
+      body: JSON.stringify({ message, include_debug: true }),
+    });
+    
+    if (response.success && response.data) {
+      return response.data;
+    }
+    
+    // Fallback debug info
+    return { 
+      intent: 'ask', 
+      confidence: 0.5, 
+      reasoning: 'Classification failed, defaulting to ask mode' 
+    };
+  }
+
   // Memory management
   async updateMemory(request: MemoryUpdateRequest): Promise<APIResponse<void>> {
     return this.makeRequest('/api/obsidian/memory/update', {
@@ -229,6 +266,7 @@ export class EvoAgentXClient {
     onWorkflowProgress?: (data: any) => void;
     onCopilot?: (data: any) => void;
     onVaultSync?: (data: any) => void;
+    onIntentDebug?: (debug: IntentDebug) => void;
     onError?: (error: string) => void;
     onConnect?: () => void;
     onDisconnect?: () => void;
@@ -260,6 +298,9 @@ export class EvoAgentXClient {
             break;
           case 'vault_sync':
             callbacks.onVaultSync?.(message.data);
+            break;
+          case 'intent_debug':
+            callbacks.onIntentDebug?.(message.data);
             break;
           case 'error':
             callbacks.onError?.(message.data);

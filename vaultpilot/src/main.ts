@@ -146,6 +146,12 @@ export default class VaultPilotPlugin extends Plugin {
         // Handle vault synchronization
         console.log('Vault sync update:', data);
       },
+      onIntentDebug: (debug) => {
+        // Handle intent debug info (only in debug mode)
+        if (this.settings.showIntentDebug && this.settings.debugMode) {
+          console.log('Intent debug:', debug);
+        }
+      },
       onError: (error) => {
         new Notice(`WebSocket error: ${error}`, 5000);
       },
