@@ -1,5 +1,8 @@
 // EvoAgentX API Type Definitions
 
+// Import vault management types
+import { VaultManagementSettings } from './vault-types';
+
 // Intent classification types
 export type Intent = "ask" | "agent";
 
@@ -235,6 +238,7 @@ export interface VaultPilotSettings {
   chatHistoryLimit: number;
   debugMode: boolean;
   showIntentDebug: boolean;
+  vaultManagement?: VaultManagementSettings;
 }
 
 // Planner types for "Plan My Day" feature

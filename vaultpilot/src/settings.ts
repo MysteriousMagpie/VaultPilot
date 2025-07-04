@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
 import type VaultPilotPlugin from './main';
 import { VaultPilotSettings } from './types';
+import { addVaultManagementSettings, DEFAULT_VAULT_MANAGEMENT_SETTINGS } from './vault-settings';
 
 export const DEFAULT_SETTINGS: VaultPilotSettings = {
   backendUrl: 'http://localhost:8000',
@@ -12,7 +13,8 @@ export const DEFAULT_SETTINGS: VaultPilotSettings = {
   defaultMode: 'ask',
   chatHistoryLimit: 100,
   debugMode: false,
-  showIntentDebug: false
+  showIntentDebug: false,
+  vaultManagement: DEFAULT_VAULT_MANAGEMENT_SETTINGS
 };
 
 export class VaultPilotSettingTab extends PluginSettingTab {
@@ -187,6 +189,13 @@ export class VaultPilotSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    // Vault Management Settings
+    containerEl.createEl('h3', { text: 'Vault Management' });
+    addVaultManagementSettings(containerEl, this.plugin);
+
+    // Help section
+    containerEl.createEl('h2', { text: 'Help & Documentation' });
 
     // Information section
     containerEl.createEl('h3', { text: 'Information' });

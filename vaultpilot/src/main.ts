@@ -8,10 +8,18 @@ import { EvoAgentXClient } from './api-client';
 import { VaultPilotSettings, CopilotResponse } from './types';
 import { fetchSchedule, injectSchedule, validateScheduleMarkdown } from './planner';
 import { setApp } from './vault-utils';
+import { VaultManagementClient } from './vault-api-client';
+import { createVaultManagementCommands } from './vault-commands';
+import { 
+  VaultStructureModal, 
+  SmartSearchModal, 
+  FileOperationsModal
+} from './vault-modals';
 
 export default class VaultPilotPlugin extends Plugin {
   settings!: VaultPilotSettings;
   apiClient!: EvoAgentXClient;
+  vaultClient!: VaultManagementClient;
   private websocketConnected = false;
   private copilotEnabled = false;
 
@@ -23,6 +31,11 @@ export default class VaultPilotPlugin extends Plugin {
 
     // Initialize API client
     this.apiClient = new EvoAgentXClient(this.settings.backendUrl, this.settings.apiKey);
+
+    // Initialize vault management if enabled
+    if (this.settings.vaultManagement?.enableVaultManagement) {
+      this.initializeVaultManagement();
+    }
 
     // Test backend connection
     try {
@@ -133,6 +146,9 @@ export default class VaultPilotPlugin extends Plugin {
       name: 'Open VaultPilot Dashboard',
       callback: () => this.activateFullTabView()
     });
+
+    // Register vault management commands
+    this.registerVaultManagementCommands();
 
     // Register editor events for copilot
     if (this.settings.enableCopilot && this.settings.enableAutoComplete) {
@@ -474,6 +490,79 @@ export default class VaultPilotPlugin extends Plugin {
     }
   }
 
+  // === VAULT MANAGEMENT METHODS ===
+
+  initializeVaultManagement() {
+    if (!this.settings.vaultManagement?.enableVaultManagement) return;
+    
+    this.vaultClient = new VaultManagementClient(
+      this.settings.backendUrl,
+      this.settings.apiKey
+    );
+    
+    if (this.settings.debugMode) {
+      console.log('Vault management initialized');
+    }
+  }
+
+  disableVaultManagement() {
+    this.vaultClient = null as any;
+    if (this.settings.debugMode) {
+      console.log('Vault management disabled');
+    }
+  }
+
+  registerVaultManagementCommands() {
+    const commands = createVaultManagementCommands();
+    commands.forEach(command => {
+      this.addCommand({
+        ...command,
+        callback: command.callback?.bind(this),
+        editorCallback: command.editorCallback?.bind(this)
+      });
+    });
+  }
+
+  // Modal opening methods for vault management
+  openVaultStructureModal() {
+    if (!this.vaultClient) {
+      new Notice('Vault management not available');
+      return;
+    }
+    new VaultStructureModal(this.app, this).open();
+  }
+
+  openSmartSearchModal(query?: string, type?: string) {
+    if (!this.vaultClient) {
+      new Notice('Vault management not available');
+      return;
+    }
+    const modal = new SmartSearchModal(this.app, this);
+    if (query) modal.setInitialQuery(query, type as any);
+    modal.open();
+  }
+
+  openFileOperationsModal(path?: string, operation?: string) {
+    if (!this.vaultClient) {
+      new Notice('Vault management not available');
+      return;
+    }
+    const modal = new FileOperationsModal(this.app, this);
+    if (path) modal.setInitialPath(path);
+    if (operation) modal.setOperation(operation);
+    modal.open();
+  }
+
+  openVaultOrganizerModal() {
+    new Notice('Vault organizer modal not yet implemented');
+  }
+
+  openBatchOperationsModal() {
+    new Notice('Batch operations modal not yet implemented');
+  }
+
+  // === END VAULT MANAGEMENT METHODS ===
+
   // Auto-completion handling
   private handleKeyUp(event: KeyboardEvent) {
     if (!this.settings.enableAutoComplete || !this.settings.enableCopilot) return;
@@ -585,6 +674,13 @@ export default class VaultPilotPlugin extends Plugin {
     
     // Update API client if URL changed
     this.apiClient = new EvoAgentXClient(this.settings.backendUrl, this.settings.apiKey);
+    
+    // Reinitialize vault management if settings changed
+    if (this.settings.vaultManagement?.enableVaultManagement) {
+      this.initializeVaultManagement();
+    } else {
+      this.disableVaultManagement();
+    }
     
     // Reconnect WebSocket if settings changed
     if (this.settings.enableWebSocket && !this.websocketConnected) {

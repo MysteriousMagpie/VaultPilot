@@ -95,8 +95,8 @@ export class EvoAgentXClient {
 
   // Health check
   async healthCheck(): Promise<APIResponse<{ status: string; version: string }>> {
-    console.log(`VaultPilot: Attempting health check to ${this.baseUrl}/api/obsidian/health`);
-    const result = await this.makeRequest<{ status: string; version: string }>('/api/obsidian/health', {
+    console.log(`VaultPilot: Attempting health check to ${this.baseUrl}/status`);
+    const result = await this.makeRequest<{ status: string; version: string }>('/status', {
       method: 'GET',
     });
     console.log('VaultPilot: Health check result:', result);
@@ -106,7 +106,7 @@ export class EvoAgentXClient {
   // Alternative health check method if the main one fails
   async simpleHealthCheck(): Promise<APIResponse<{ status: string }>> {
     try {
-      const url = `${this.baseUrl}/api/obsidian/health`;
+      const url = `${this.baseUrl}/status`;
       const response = await fetch(url, {
         method: 'HEAD',
         mode: 'cors',
