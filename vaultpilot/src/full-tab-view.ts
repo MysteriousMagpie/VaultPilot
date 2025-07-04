@@ -33,6 +33,10 @@ export class VaultPilotFullTabView extends ItemView {
     container.empty();
     container.addClass('vaultpilot-full-tab-view');
 
+    // Force the container to take full height
+    container.style.height = '100%';
+    container.style.overflow = 'hidden';
+
     // Create main layout
     const mainLayout = container.createEl('div', { cls: 'vaultpilot-main-layout' });
 
@@ -542,6 +546,10 @@ export class VaultPilotFullTabView extends ItemView {
       const styleEl = document.createElement('style');
       styleEl.id = 'vaultpilot-full-tab-styles';
       styleEl.textContent = `
+        /* Ensure the full tab view fills available space */
+        .workspace-leaf-content[data-type="vaultpilot-full-tab-view"] {
+          height: 100%;
+        }
         .vaultpilot-full-tab-view {
           height: 100%;
           display: flex;
@@ -549,9 +557,10 @@ export class VaultPilotFullTabView extends ItemView {
         }
         .vaultpilot-main-layout {
           display: flex;
-          height: 100%;
+          flex: 1;
           gap: 1px;
           background: var(--background-modifier-border);
+          min-height: 0;
         }
         .vaultpilot-left-sidebar {
           width: 250px;
@@ -564,6 +573,7 @@ export class VaultPilotFullTabView extends ItemView {
           background: var(--background-primary);
           display: flex;
           flex-direction: column;
+          min-height: 0;
         }
         .vaultpilot-right-sidebar {
           width: 250px;
@@ -581,6 +591,7 @@ export class VaultPilotFullTabView extends ItemView {
           display: flex;
           background: var(--background-secondary);
           border-bottom: 1px solid var(--background-modifier-border);
+          flex-shrink: 0;
         }
         .vaultpilot-tab-button {
           flex: 1;
@@ -601,21 +612,18 @@ export class VaultPilotFullTabView extends ItemView {
         }
         .vaultpilot-tab-content {
           flex: 1;
-          overflow: hidden;
-          position: relative;
+          display: flex;
+          flex-direction: column;
         }
         .vaultpilot-chat-section,
         .vaultpilot-workflow-section,
         .vaultpilot-analytics-section {
-          height: 100%;
+          flex: 1;
           padding: 16px;
           display: none;
           overflow-y: auto;
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
+          box-sizing: border-box;
+          min-height: 0;
         }
         .vaultpilot-chat-section.active,
         .vaultpilot-workflow-section.active,
@@ -681,7 +689,10 @@ export class VaultPilotFullTabView extends ItemView {
         }
         .vaultpilot-workflow-section,
         .vaultpilot-analytics-section {
+          display: flex;
+          flex-direction: column;
           gap: 16px;
+          min-height: 0;
         }
         .vaultpilot-workflow-header,
         .vaultpilot-analytics-header {
@@ -690,6 +701,7 @@ export class VaultPilotFullTabView extends ItemView {
         .vaultpilot-workflow-container,
         .vaultpilot-charts-container {
           flex: 1;
+          min-height: 0;
           overflow-y: auto;
         }
         .vaultpilot-workflow-grid {
@@ -697,6 +709,7 @@ export class VaultPilotFullTabView extends ItemView {
           grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
           gap: 16px;
           align-content: start;
+          padding-bottom: 16px;
         }
         .vaultpilot-workflow-card {
           background: var(--background-secondary);
@@ -719,10 +732,14 @@ export class VaultPilotFullTabView extends ItemView {
           cursor: pointer;
         }
         .vaultpilot-charts-container {
+          flex: 1;
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
           gap: 16px;
           align-content: start;
+          padding-bottom: 16px;
+          overflow-y: auto;
+          min-height: 0;
         }
         .vaultpilot-chart-card {
           background: var(--background-secondary);
