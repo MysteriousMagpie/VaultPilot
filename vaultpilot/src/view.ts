@@ -203,19 +203,41 @@ export class VaultPilotView extends ItemView {
 
   private async loadAgentInfo() {
     try {
+      console.log('VaultPilot: Loading agents in view...');
       const response = await this.plugin.apiClient.getAgents();
+      console.log('VaultPilot: getAgents response in view:', response);
+      
       if (response.success && response.data) {
-        const agentCount = response.data.length;
-        const activeAgents = response.data.filter((agent: any) => agent.active).length;
-        
-        const agentStatsEl = this.vaultStatsEl.createEl('div', { cls: 'vaultpilot-agent-stats' });
-        agentStatsEl.createEl('h4', { text: 'Available Agents' });
-        
-        const agentInfo = agentStatsEl.createEl('div', { cls: 'vaultpilot-agent-info' });
-        agentInfo.createEl('span', { text: `${activeAgents}/${agentCount} active` });
+        // Add defensive check to ensure data is an array
+        if (Array.isArray(response.data)) {
+          const agentCount = response.data.length;
+          const activeAgents = response.data.filter((agent: any) => agent.active).length;
+          
+          const agentStatsEl = this.vaultStatsEl.createEl('div', { cls: 'vaultpilot-agent-stats' });
+          agentStatsEl.createEl('h4', { text: 'Available Agents' });
+          
+          const agentInfo = agentStatsEl.createEl('div', { cls: 'vaultpilot-agent-info' });
+          agentInfo.createEl('span', { text: `${activeAgents}/${agentCount} active` });
+        } else {
+          console.error('Failed to load agents: Expected array but got:', typeof response.data, response.data);
+          
+          // Check if the data is wrapped in another object
+          const dataObj = response.data as any;
+          if (dataObj && typeof dataObj === 'object' && dataObj.data && Array.isArray(dataObj.data)) {
+            console.log('VaultPilot: Found nested data in view, using response.data.data');
+            const agentCount = dataObj.data.length;
+            const activeAgents = dataObj.data.filter((agent: any) => agent.active).length;
+            
+            const agentStatsEl = this.vaultStatsEl.createEl('div', { cls: 'vaultpilot-agent-stats' });
+            agentStatsEl.createEl('h4', { text: 'Available Agents' });
+            
+            const agentInfo = agentStatsEl.createEl('div', { cls: 'vaultpilot-agent-info' });
+            agentInfo.createEl('span', { text: `${activeAgents}/${agentCount} active` });
+          }
+        }
       }
     } catch (error) {
-      // Silently fail if agents can't be loaded
+      console.error('Failed to load agents in view:', error);
     }
   }
 

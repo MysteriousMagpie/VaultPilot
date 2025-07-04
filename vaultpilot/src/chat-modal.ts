@@ -89,14 +89,49 @@ export class ChatModal extends Modal {
 
   private async loadAgents(selectEl: HTMLSelectElement) {
     try {
+      console.log('VaultPilot: Loading agents...');
       const response = await this.plugin.apiClient.getAgents();
+      console.log('VaultPilot: getAgents response:', response);
+      
       if (response.success && response.data) {
-        response.data.forEach(agent => {
-          const option = selectEl.createEl('option', {
-            text: agent.name,
-            value: agent.id
+        console.log('VaultPilot: response.data type:', typeof response.data);
+        console.log('VaultPilot: response.data content:', response.data);
+        
+        let agents: any[] = [];
+        
+        // Check if data is directly an array
+        if (Array.isArray(response.data)) {
+          agents = response.data;
+        } 
+        // Check if data has an 'agents' property with an array
+        else if (response.data && typeof response.data === 'object') {
+          const dataObj = response.data as any;
+          if (dataObj.agents && Array.isArray(dataObj.agents)) {
+            agents = dataObj.agents;
+          } else if (dataObj.data && Array.isArray(dataObj.data)) {
+            agents = dataObj.data;
+          }
+        }
+        
+        if (agents.length > 0) {
+          console.log('VaultPilot: Found', agents.length, 'agents');
+          agents.forEach(agent => {
+            const option = selectEl.createEl('option', {
+              text: agent.name,
+              value: agent.id
+            });
           });
-        });
+        } else {
+          console.log('VaultPilot: No agents found in response');
+          // Add a default option indicating no agents
+          const option = selectEl.createEl('option', {
+            text: 'No agents available',
+            value: ''
+          });
+          option.disabled = true;
+        }
+      } else {
+        console.error('Failed to load agents: API returned error or no data:', response);
       }
     } catch (error) {
       console.error('Failed to load agents:', error);

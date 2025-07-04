@@ -448,25 +448,75 @@ export class VaultPilotFullTabView extends ItemView {
 
   private async loadAgentInfo(container?: HTMLElement) {
     try {
+      console.log('VaultPilot: Loading agents in full-tab-view...');
       const response = await this.plugin.apiClient.getAgents();
+      console.log('VaultPilot: getAgents response in full-tab-view:', response);
+      
       if (response.success && response.data && container) {
-        const agentCount = response.data.length;
-        const activeAgents = response.data.filter((agent: any) => agent.active).length;
-        
-        const agentInfo = container.createEl('div', { cls: 'vaultpilot-agent-info' });
-        agentInfo.createEl('div', { text: `${activeAgents}/${agentCount} active` });
-        
-        response.data.forEach((agent: any) => {
-          const agentEl = agentInfo.createEl('div', { cls: 'vaultpilot-agent-item' });
-          agentEl.createEl('span', { text: agent.name });
-          agentEl.createEl('span', { 
-            text: agent.active ? '🟢' : '🔴',
-            cls: 'vaultpilot-agent-status'
+        // Add defensive check to ensure data is an array
+        if (Array.isArray(response.data)) {
+          const agentCount = response.data.length;
+          const activeAgents = response.data.filter((agent: any) => agent.active).length;
+          
+          const agentInfo = container.createEl('div', { cls: 'vaultpilot-agent-info' });
+          agentInfo.createEl('div', { text: `${activeAgents}/${agentCount} active` });
+          
+          response.data.forEach((agent: any) => {
+            const agentEl = agentInfo.createEl('div', { cls: 'vaultpilot-agent-item' });
+            agentEl.createEl('span', { text: agent.name });
+            agentEl.createEl('span', { 
+              text: agent.active ? '🟢' : '🔴',
+              cls: 'vaultpilot-agent-status'
+            });
           });
-        });
+        } else {
+          console.error('Failed to load agents: Expected array but got:', typeof response.data, response.data);
+          
+          // Check if the data is wrapped in another object
+          const dataObj = response.data as any;
+          if (dataObj && typeof dataObj === 'object') {
+            let agents: any[] = [];
+            
+            // Check for 'agents' property first (matching backend format)
+            if (dataObj.agents && Array.isArray(dataObj.agents)) {
+              agents = dataObj.agents;
+              console.log('VaultPilot: Found agents array in full-tab-view, using response.data.agents');
+            } 
+            // Fallback to 'data' property
+            else if (dataObj.data && Array.isArray(dataObj.data)) {
+              agents = dataObj.data;
+              console.log('VaultPilot: Found nested data in full-tab-view, using response.data.data');
+            }
+            
+            if (agents.length > 0) {
+              const agentCount = agents.length;
+              const activeAgents = agents.filter((agent: any) => agent.active).length;
+              
+              const agentInfo = container.createEl('div', { cls: 'vaultpilot-agent-info' });
+              agentInfo.createEl('div', { text: `${activeAgents}/${agentCount} active` });
+              
+              agents.forEach((agent: any) => {
+                const agentEl = agentInfo.createEl('div', { cls: 'vaultpilot-agent-item' });
+                agentEl.createEl('span', { text: agent.name });
+                agentEl.createEl('span', { 
+                  text: agent.active ? '🟢' : '🔴',
+                  cls: 'vaultpilot-agent-status'
+                });
+              });
+            } else {
+              // Show message when no agents are available
+              const agentInfo = container.createEl('div', { cls: 'vaultpilot-agent-info' });
+              agentInfo.createEl('div', { text: 'No agents available' });
+            }
+          } else {
+            // Show message when data format is unexpected
+            const agentInfo = container.createEl('div', { cls: 'vaultpilot-agent-info' });
+            agentInfo.createEl('div', { text: 'Unable to load agents' });
+          }
+        }
       }
     } catch (error) {
-      // Silently fail if agents can't be loaded
+      console.error('Failed to load agents in full tab view:', error);
     }
   }
 
