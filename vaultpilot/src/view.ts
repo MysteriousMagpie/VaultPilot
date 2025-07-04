@@ -208,33 +208,37 @@ export class VaultPilotView extends ItemView {
       console.log('VaultPilot: getAgents response in view:', response);
       
       if (response.success && response.data) {
-        // Add defensive check to ensure data is an array
+        let agents: any[] = [];
+        
+        // Handle different response formats
         if (Array.isArray(response.data)) {
-          const agentCount = response.data.length;
-          const activeAgents = response.data.filter((agent: any) => agent.active).length;
-          
-          const agentStatsEl = this.vaultStatsEl.createEl('div', { cls: 'vaultpilot-agent-stats' });
-          agentStatsEl.createEl('h4', { text: 'Available Agents' });
-          
-          const agentInfo = agentStatsEl.createEl('div', { cls: 'vaultpilot-agent-info' });
-          agentInfo.createEl('span', { text: `${activeAgents}/${agentCount} active` });
-        } else {
-          console.error('Failed to load agents: Expected array but got:', typeof response.data, response.data);
-          
-          // Check if the data is wrapped in another object
+          // Direct array response
+          agents = response.data;
+        } else if (response.data && typeof response.data === 'object') {
+          // Check for wrapped response formats
           const dataObj = response.data as any;
-          if (dataObj && typeof dataObj === 'object' && dataObj.data && Array.isArray(dataObj.data)) {
+          if (dataObj.agents && Array.isArray(dataObj.agents)) {
+            // Response format: {agents: [...]}
+            agents = dataObj.agents;
+            console.log('VaultPilot: Found agents array in view, using response.data.agents');
+          } else if (dataObj.data && Array.isArray(dataObj.data)) {
+            // Response format: {data: [...]}
+            agents = dataObj.data;
             console.log('VaultPilot: Found nested data in view, using response.data.data');
-            const agentCount = dataObj.data.length;
-            const activeAgents = dataObj.data.filter((agent: any) => agent.active).length;
-            
-            const agentStatsEl = this.vaultStatsEl.createEl('div', { cls: 'vaultpilot-agent-stats' });
-            agentStatsEl.createEl('h4', { text: 'Available Agents' });
-            
-            const agentInfo = agentStatsEl.createEl('div', { cls: 'vaultpilot-agent-info' });
-            agentInfo.createEl('span', { text: `${activeAgents}/${agentCount} active` });
+          } else {
+            console.warn('VaultPilot: Unexpected response format:', typeof response.data, response.data);
           }
         }
+        
+        // Display agent information
+        const agentCount = agents.length;
+        const activeAgents = agents.filter((agent: any) => agent.active).length;
+        
+        const agentStatsEl = this.vaultStatsEl.createEl('div', { cls: 'vaultpilot-agent-stats' });
+        agentStatsEl.createEl('h4', { text: 'Available Agents' });
+        
+        const agentInfo = agentStatsEl.createEl('div', { cls: 'vaultpilot-agent-info' });
+        agentInfo.createEl('span', { text: `${activeAgents}/${agentCount} active` });
       }
     } catch (error) {
       console.error('Failed to load agents in view:', error);

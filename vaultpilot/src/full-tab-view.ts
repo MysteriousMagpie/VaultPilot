@@ -173,8 +173,9 @@ export class VaultPilotFullTabView extends ItemView {
     const workflowHeader = workflowEl.createEl('div', { cls: 'vaultpilot-workflow-header' });
     workflowHeader.createEl('h3', { text: 'Workflow Management' });
 
-    // Workflow grid
-    const workflowGrid = workflowEl.createEl('div', { cls: 'vaultpilot-workflow-grid' });
+    // Workflow grid container
+    const workflowContainer = workflowEl.createEl('div', { cls: 'vaultpilot-workflow-container' });
+    const workflowGrid = workflowContainer.createEl('div', { cls: 'vaultpilot-workflow-grid' });
 
     // Predefined workflows
     const workflows = [
@@ -183,7 +184,9 @@ export class VaultPilotFullTabView extends ItemView {
       { name: 'Link Analysis', icon: '🔗', description: 'Analyze note connections and relationships' },
       { name: 'Tag Management', icon: '🏷️', description: 'Organize and manage your tags' },
       { name: 'Daily Planning', icon: '📅', description: 'Plan your day based on your notes' },
-      { name: 'Knowledge Graph', icon: '🕸️', description: 'Visualize your knowledge connections' }
+      { name: 'Knowledge Graph', icon: '🕸️', description: 'Visualize your knowledge connections' },
+      { name: 'Content Search', icon: '🔎', description: 'Advanced search across your vault' },
+      { name: 'Note Templates', icon: '📄', description: 'Create and manage note templates' }
     ];
 
     workflows.forEach(workflow => {
@@ -206,7 +209,7 @@ export class VaultPilotFullTabView extends ItemView {
     const analyticsHeader = analyticsEl.createEl('div', { cls: 'vaultpilot-analytics-header' });
     analyticsHeader.createEl('h3', { text: 'Vault Analytics' });
 
-    // Charts placeholder
+    // Charts container
     const chartsContainer = analyticsEl.createEl('div', { cls: 'vaultpilot-charts-container' });
     
     // File type distribution
@@ -230,6 +233,30 @@ export class VaultPilotFullTabView extends ItemView {
     tagChart.createEl('h4', { text: 'Tag Usage' });
     tagChart.createEl('div', { 
       text: 'Tag analytics coming soon...',
+      cls: 'vaultpilot-chart-placeholder'
+    });
+
+    // Word count analysis
+    const wordCountChart = chartsContainer.createEl('div', { cls: 'vaultpilot-chart-card' });
+    wordCountChart.createEl('h4', { text: 'Word Count Analysis' });
+    wordCountChart.createEl('div', { 
+      text: 'Word count visualization coming soon...',
+      cls: 'vaultpilot-chart-placeholder'
+    });
+
+    // Link density
+    const linkChart = chartsContainer.createEl('div', { cls: 'vaultpilot-chart-card' });
+    linkChart.createEl('h4', { text: 'Link Density' });
+    linkChart.createEl('div', { 
+      text: 'Link analysis coming soon...',
+      cls: 'vaultpilot-chart-placeholder'
+    });
+
+    // Activity heatmap
+    const activityChart = chartsContainer.createEl('div', { cls: 'vaultpilot-chart-card' });
+    activityChart.createEl('h4', { text: 'Activity Heatmap' });
+    activityChart.createEl('div', { 
+      text: 'Activity heatmap coming soon...',
       cls: 'vaultpilot-chart-placeholder'
     });
   }
@@ -453,67 +480,43 @@ export class VaultPilotFullTabView extends ItemView {
       console.log('VaultPilot: getAgents response in full-tab-view:', response);
       
       if (response.success && response.data && container) {
-        // Add defensive check to ensure data is an array
+        let agents: any[] = [];
+        
+        // Handle different response formats
         if (Array.isArray(response.data)) {
-          const agentCount = response.data.length;
-          const activeAgents = response.data.filter((agent: any) => agent.active).length;
-          
-          const agentInfo = container.createEl('div', { cls: 'vaultpilot-agent-info' });
-          agentInfo.createEl('div', { text: `${activeAgents}/${agentCount} active` });
-          
-          response.data.forEach((agent: any) => {
-            const agentEl = agentInfo.createEl('div', { cls: 'vaultpilot-agent-item' });
-            agentEl.createEl('span', { text: agent.name });
-            agentEl.createEl('span', { 
-              text: agent.active ? '🟢' : '🔴',
-              cls: 'vaultpilot-agent-status'
-            });
-          });
-        } else {
-          console.error('Failed to load agents: Expected array but got:', typeof response.data, response.data);
-          
-          // Check if the data is wrapped in another object
+          // Direct array response
+          agents = response.data;
+        } else if (response.data && typeof response.data === 'object') {
+          // Check for wrapped response formats
           const dataObj = response.data as any;
-          if (dataObj && typeof dataObj === 'object') {
-            let agents: any[] = [];
-            
-            // Check for 'agents' property first (matching backend format)
-            if (dataObj.agents && Array.isArray(dataObj.agents)) {
-              agents = dataObj.agents;
-              console.log('VaultPilot: Found agents array in full-tab-view, using response.data.agents');
-            } 
-            // Fallback to 'data' property
-            else if (dataObj.data && Array.isArray(dataObj.data)) {
-              agents = dataObj.data;
-              console.log('VaultPilot: Found nested data in full-tab-view, using response.data.data');
-            }
-            
-            if (agents.length > 0) {
-              const agentCount = agents.length;
-              const activeAgents = agents.filter((agent: any) => agent.active).length;
-              
-              const agentInfo = container.createEl('div', { cls: 'vaultpilot-agent-info' });
-              agentInfo.createEl('div', { text: `${activeAgents}/${agentCount} active` });
-              
-              agents.forEach((agent: any) => {
-                const agentEl = agentInfo.createEl('div', { cls: 'vaultpilot-agent-item' });
-                agentEl.createEl('span', { text: agent.name });
-                agentEl.createEl('span', { 
-                  text: agent.active ? '🟢' : '🔴',
-                  cls: 'vaultpilot-agent-status'
-                });
-              });
-            } else {
-              // Show message when no agents are available
-              const agentInfo = container.createEl('div', { cls: 'vaultpilot-agent-info' });
-              agentInfo.createEl('div', { text: 'No agents available' });
-            }
+          if (dataObj.agents && Array.isArray(dataObj.agents)) {
+            // Response format: {agents: [...]}
+            agents = dataObj.agents;
+            console.log('VaultPilot: Found agents array in full-tab-view, using response.data.agents');
+          } else if (dataObj.data && Array.isArray(dataObj.data)) {
+            // Response format: {data: [...]}
+            agents = dataObj.data;
+            console.log('VaultPilot: Found nested data in full-tab-view, using response.data.data');
           } else {
-            // Show message when data format is unexpected
-            const agentInfo = container.createEl('div', { cls: 'vaultpilot-agent-info' });
-            agentInfo.createEl('div', { text: 'Unable to load agents' });
+            console.warn('VaultPilot: Unexpected response format:', typeof response.data, response.data);
           }
         }
+        
+        // Display agent information
+        const agentCount = agents.length;
+        const activeAgents = agents.filter((agent: any) => agent.active).length;
+        
+        const agentInfo = container.createEl('div', { cls: 'vaultpilot-agent-info' });
+        agentInfo.createEl('div', { text: `${activeAgents}/${agentCount} active` });
+        
+        agents.forEach((agent: any) => {
+          const agentEl = agentInfo.createEl('div', { cls: 'vaultpilot-agent-item' });
+          agentEl.createEl('span', { text: agent.name });
+          agentEl.createEl('span', { 
+            text: agent.active ? '🟢' : '🔴',
+            cls: 'vaultpilot-agent-status'
+          });
+        });
       }
     } catch (error) {
       console.error('Failed to load agents in full tab view:', error);
@@ -599,6 +602,7 @@ export class VaultPilotFullTabView extends ItemView {
         .vaultpilot-tab-content {
           flex: 1;
           overflow: hidden;
+          position: relative;
         }
         .vaultpilot-chat-section,
         .vaultpilot-workflow-section,
@@ -606,6 +610,12 @@ export class VaultPilotFullTabView extends ItemView {
           height: 100%;
           padding: 16px;
           display: none;
+          overflow-y: auto;
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
         }
         .vaultpilot-chat-section.active,
         .vaultpilot-workflow-section.active,
@@ -669,10 +679,24 @@ export class VaultPilotFullTabView extends ItemView {
           background: var(--background-modifier-error);
           color: var(--text-error);
         }
+        .vaultpilot-workflow-section,
+        .vaultpilot-analytics-section {
+          gap: 16px;
+        }
+        .vaultpilot-workflow-header,
+        .vaultpilot-analytics-header {
+          flex-shrink: 0;
+        }
+        .vaultpilot-workflow-container,
+        .vaultpilot-charts-container {
+          flex: 1;
+          overflow-y: auto;
+        }
         .vaultpilot-workflow-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
           gap: 16px;
+          align-content: start;
         }
         .vaultpilot-workflow-card {
           background: var(--background-secondary);
@@ -698,6 +722,7 @@ export class VaultPilotFullTabView extends ItemView {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
           gap: 16px;
+          align-content: start;
         }
         .vaultpilot-chart-card {
           background: var(--background-secondary);
