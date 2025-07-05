@@ -3,6 +3,12 @@
 // Import vault management types
 import { VaultManagementSettings } from './vault-types';
 
+// Import model selection types
+export * from './types/ModelSelection';
+
+// Import model selection types
+export * from './types/ModelSelection';
+
 // Intent classification types
 export type Intent = "ask" | "agent";
 
@@ -239,6 +245,24 @@ export interface VaultPilotSettings {
   debugMode: boolean;
   showIntentDebug: boolean;
   vaultManagement?: VaultManagementSettings;
+  modelSelection?: ModelSelectionSettings;
+}
+
+export interface ModelSelectionSettings {
+  enabled: boolean;
+  devpipePath: string;
+  monitoringInterval: number;
+  fallbackEnabled: boolean;
+  cacheDuration: number;
+  retryAttempts: number;
+  timeout: number;
+  debugMode: boolean;
+  userPreferences: {
+    priority: 'performance' | 'cost' | 'balanced';
+    maxCostPerRequest: number;
+    preferredProviders: string[];
+    qualityThreshold: number;
+  };
 }
 
 // Planner types for "Plan My Day" feature

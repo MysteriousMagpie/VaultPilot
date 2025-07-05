@@ -11,6 +11,8 @@ import { planMyDayDebugger } from './plan-my-day-debug';
 import { setApp } from './vault-utils';
 import { VaultManagementClient } from './vault-api-client';
 import { createVaultManagementCommands } from './vault-commands';
+import { ModelSelectionService } from './services/ModelSelectionService';
+import { EnvironmentDetector } from './utils/EnvironmentDetector';
 import { 
   VaultStructureModal, 
   SmartSearchModal, 
@@ -21,6 +23,7 @@ export default class VaultPilotPlugin extends Plugin {
   settings!: VaultPilotSettings;
   apiClient!: EvoAgentXClient;
   vaultClient!: VaultManagementClient;
+  modelSelectionService?: ModelSelectionService;
   private websocketConnected = false;
   private copilotEnabled = false;
 
@@ -36,6 +39,17 @@ export default class VaultPilotPlugin extends Plugin {
     // Initialize vault management if enabled
     if (this.settings.vaultManagement?.enableVaultManagement) {
       this.initializeVaultManagement();
+    }
+
+    // Initialize model selection if enabled (with error handling)
+    if (this.settings.modelSelection?.enabled) {
+      // Don't await - initialize in background to avoid blocking plugin load
+      this.initializeModelSelection().catch(error => {
+        if (this.settings.debugMode) {
+          console.warn('Model selection initialization failed during plugin load:', error);
+        }
+        // Silently fail during plugin initialization
+      });
     }
 
     // Test backend connection
@@ -143,6 +157,30 @@ export default class VaultPilotPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: 'test-model-selection',
+      name: 'Test Smart Model Selection',
+      callback: () => this.testModelSelection()
+    });
+
+    this.addCommand({
+      id: 'show-model-health',
+      name: 'Show Model Health Status',
+      callback: () => this.showModelHealth()
+    });
+
+    this.addCommand({
+      id: 'retry-model-selection',
+      name: 'Retry Model Selection Initialization',
+      callback: () => this.retryModelSelectionManual()
+    });
+
+    this.addCommand({
+      id: 'check-service-status',
+      name: 'Check VaultPilot Service Status',
+      callback: () => this.checkServiceStatus()
+    });
+
+    this.addCommand({
       id: 'open-vaultpilot-view',
       name: 'Open VaultPilot View',
       callback: () => this.activateView()
@@ -166,10 +204,11 @@ export default class VaultPilotPlugin extends Plugin {
     this.addSettingTab(new VaultPilotSettingTab(this.app, this));
   }
 
-  onunload() {
+  async onunload() {
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_VAULTPILOT);
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_VAULTPILOT_FULL_TAB);
     this.disconnectWebSocket();
+    await this.disconnectModelSelection();
   }
 
   // WebSocket Management
@@ -851,11 +890,325 @@ export default class VaultPilotPlugin extends Plugin {
       this.disableVaultManagement();
     }
     
+    // Reinitialize model selection if settings changed
+    if (this.settings.modelSelection?.enabled) {
+      await this.initializeModelSelection();
+    } else {
+      await this.disconnectModelSelection();
+    }
+    
     // Reconnect WebSocket if settings changed
     if (this.settings.enableWebSocket && !this.websocketConnected) {
       this.connectWebSocket();
     } else if (!this.settings.enableWebSocket && this.websocketConnected) {
       this.disconnectWebSocket();
     }
+  }
+
+  // Model Selection Management Methods
+  async initializeModelSelection(): Promise<void> {
+    if (!this.settings.modelSelection?.enabled) {
+      if (this.settings.debugMode) {
+        console.log('Model selection disabled in settings');
+      }
+      return;
+    }
+
+    try {
+      // Validate environment
+      const env = EnvironmentDetector.detect();
+      if (!env.hasHTTP) {
+        throw new Error('HTTP transport not available');
+      }
+
+      // Initialize service with error boundary
+      this.modelSelectionService = new ModelSelectionService(
+        this.settings.backendUrl,
+        this.settings.modelSelection.devpipePath,
+        {
+          monitoring_interval: this.settings.modelSelection.monitoringInterval,
+          fallback_enabled: this.settings.modelSelection.fallbackEnabled,
+          cache_duration: this.settings.modelSelection.cacheDuration,
+          retry_attempts: this.settings.modelSelection.retryAttempts,
+          timeout: this.settings.modelSelection.timeout,
+          debug_mode: this.settings.modelSelection.debugMode
+        }
+      );
+
+      await this.modelSelectionService.updatePreferences({
+        priority: this.settings.modelSelection.userPreferences.priority,
+        max_cost_per_request: this.settings.modelSelection.userPreferences.maxCostPerRequest,
+        preferred_providers: this.settings.modelSelection.userPreferences.preferredProviders,
+        fallback_enabled: this.settings.modelSelection.fallbackEnabled,
+        quality_threshold: this.settings.modelSelection.userPreferences.qualityThreshold,
+        timeout_preference: this.settings.modelSelection.timeout
+      });
+
+      await this.modelSelectionService.initialize();
+
+      if (this.settings.debugMode) {
+        console.log('ModelSelectionService initialized successfully');
+      }
+
+      new Notice('🤖 Smart model selection enabled', 3000);
+
+    } catch (error) {
+      console.error('Failed to initialize ModelSelectionService:', error);
+      
+      // Show user-friendly error message
+      if (error instanceof Error) {
+        if (error.message.includes('not accessible') || error.message.includes('Failed to fetch')) {
+          if (this.settings.debugMode) {
+            new Notice('⚠️ Model selection service unavailable - using fallback mode', 4000);
+          }
+          // Don't show error to user in production - just log it
+        } else if (error.message.includes('transport not available')) {
+          new Notice('⚠️ Model selection not supported in this environment', 5000);
+        } else {
+          if (this.settings.debugMode) {
+            new Notice('⚠️ Model selection initialization failed', 3000);
+          }
+        }
+      }
+      
+      // Set up retry mechanism
+      if (this.settings.modelSelection.retryAttempts > 0) {
+        setTimeout(() => {
+          this.retryModelSelectionInit(1);
+        }, 10000); // Retry after 10 seconds
+      }
+    }
+  }
+
+  private async retryModelSelectionInit(attempt: number): Promise<void> {
+    if (attempt > (this.settings.modelSelection?.retryAttempts || 3)) {
+      if (this.settings.debugMode) {
+        console.log('Model selection initialization retry limit reached');
+      }
+      return;
+    }
+
+    try {
+      if (this.settings.debugMode) {
+        console.log(`Retrying model selection initialization (attempt ${attempt})`);
+      }
+      
+      await this.initializeModelSelection();
+    } catch (error) {
+      // Exponential backoff for retries
+      const delay = Math.min(30000, 5000 * Math.pow(2, attempt - 1));
+      setTimeout(() => {
+        this.retryModelSelectionInit(attempt + 1);
+      }, delay);
+    }
+  }
+
+  async checkServiceStatus(): Promise<void> {
+    const notice = new Notice('Checking VaultPilot service status...', 0);
+    
+    try {
+      let statusText = '🔍 VaultPilot Service Status:\n\n';
+      
+      // Check main backend connection
+      try {
+        const response = await this.apiClient.healthCheck();
+        if (response.success) {
+          statusText += '✅ Main Backend: Connected\n';
+          statusText += `   Server: ${this.settings.backendUrl}\n`;
+        } else {
+          statusText += '❌ Main Backend: Failed\n';
+          statusText += `   Error: ${response.error}\n`;
+        }
+      } catch (error) {
+        statusText += '❌ Main Backend: Connection Error\n';
+      }
+      
+      // Check WebSocket connection
+      if (this.isWebSocketConnected()) {
+        statusText += '✅ WebSocket: Connected\n';
+      } else {
+        statusText += '❌ WebSocket: Disconnected\n';
+      }
+      
+      // Check model selection service
+      if (this.settings.modelSelection?.enabled) {
+        if (this.modelSelectionService && this.modelSelectionService.isConnected()) {
+          statusText += '✅ Model Selection: Connected\n';
+        } else {
+          statusText += '❌ Model Selection: Not Available\n';
+          if (!this.modelSelectionService) {
+            statusText += '   Reason: Service not initialized\n';
+          } else {
+            statusText += '   Reason: Service disconnected\n';
+          }
+        }
+      } else {
+        statusText += '⚠️ Model Selection: Disabled in settings\n';
+      }
+      
+      // Check vault management
+      if (this.settings.vaultManagement?.enableVaultManagement) {
+        if (this.vaultClient) {
+          statusText += '✅ Vault Management: Enabled\n';
+        } else {
+          statusText += '❌ Vault Management: Failed to initialize\n';
+        }
+      } else {
+        statusText += '⚠️ Vault Management: Disabled in settings\n';
+      }
+      
+      notice.hide();
+      new Notice(statusText, 15000);
+      
+      if (this.settings.debugMode) {
+        console.log('VaultPilot Service Status:', statusText);
+      }
+      
+    } catch (error) {
+      notice.hide();
+      new Notice(`❌ Failed to check service status: ${error instanceof Error ? error.message : 'Unknown error'}`, 5000);
+    }
+  }
+
+  async retryModelSelectionManual(): Promise<void> {
+    if (this.modelSelectionService && this.modelSelectionService.isConnected()) {
+      new Notice('Model selection already connected', 3000);
+      return;
+    }
+
+    const notice = new Notice('Retrying model selection initialization...', 0);
+    
+    try {
+      await this.initializeModelSelection();
+      notice.hide();
+      new Notice('✅ Model selection connected successfully', 3000);
+    } catch (error) {
+      notice.hide();
+      new Notice(`❌ Model selection retry failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 5000);
+    }
+  }
+
+  async disconnectModelSelection(): Promise<void> {
+    if (this.modelSelectionService) {
+      try {
+        await this.modelSelectionService.disconnect();
+        this.modelSelectionService = undefined;
+        
+        if (this.settings.debugMode) {
+          console.log('ModelSelectionService disconnected');
+        }
+      } catch (error) {
+        console.error('Error disconnecting ModelSelectionService:', error);
+      }
+    }
+  }
+
+  async testModelSelection(): Promise<void> {
+    if (!this.modelSelectionService) {
+      new Notice('❌ Model selection service not initialized', 5000);
+      return;
+    }
+
+    const notice = new Notice('🤖 Testing model selection...', 0);
+
+    try {
+      const tasks = [
+        { type: 'text-generation', quality: 'medium' as const },
+        { type: 'code-generation', quality: 'high' as const },
+        { type: 'chat', quality: 'low' as const },
+        { type: 'summarization', quality: 'medium' as const }
+      ];
+
+      let results = [];
+      for (const task of tasks) {
+        try {
+          const selection = await this.modelSelectionService.selectForTask(task.type, task.quality);
+          results.push(`✅ ${task.type}: ${selection.selected_model.name} ($${selection.estimated_cost.toFixed(4)})`);
+        } catch (error) {
+          results.push(`❌ ${task.type}: Failed - ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      notice.hide();
+      const resultText = results.join('\n');
+      new Notice(`Model Selection Test Results:\n${resultText}`, 10000);
+
+      if (this.settings.debugMode) {
+        console.log('Model selection test results:', results);
+      }
+    } catch (error) {
+      notice.hide();
+      new Notice(`❌ Model selection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 5000);
+    }
+  }
+
+  async showModelHealth(): Promise<void> {
+    if (!this.modelSelectionService) {
+      new Notice('❌ Model selection service not initialized', 5000);
+      return;
+    }
+
+    const notice = new Notice('🏥 Checking model health...', 0);
+
+    try {
+      const health = await this.modelSelectionService.getModelHealth();
+      
+      notice.hide();
+
+      if (health.length === 0) {
+        new Notice('⚠️ No model health information available', 5000);
+        return;
+      }
+
+      const healthInfo = health.map(h => {
+        const status = h.status === 'healthy' ? '✅' : h.status === 'degraded' ? '⚠️' : '❌';
+        return `${status} ${h.model_id}: ${h.status} (${h.response_time}ms, ${h.availability_percentage}%)`;
+      }).join('\n');
+
+      new Notice(`Model Health Status:\n${healthInfo}`, 15000);
+
+      if (this.settings.debugMode) {
+        console.log('Model health status:', health);
+      }
+    } catch (error) {
+      notice.hide();
+      new Notice(`❌ Failed to get model health: ${error instanceof Error ? error.message : 'Unknown error'}`, 5000);
+    }
+  }
+
+  async getBestModelForTask(taskType: string, quality: 'low' | 'medium' | 'high' = 'medium') {
+    // Check if model selection service is available and connected
+    if (this.modelSelectionService && this.modelSelectionService.isConnected()) {
+      try {
+        const selection = await this.modelSelectionService.selectForTask(taskType, quality);
+        
+        if (this.settings.debugMode) {
+          console.log(`Selected model ${selection.selected_model.name} for ${taskType} task`);
+        }
+        
+        return selection;
+      } catch (error) {
+        if (this.settings.debugMode) {
+          console.warn('Model selection failed, using default:', error);
+        }
+        
+        // If enabled, try to reinitialize the service
+        if (this.settings.modelSelection?.enabled && !this.modelSelectionService.isConnected()) {
+          this.retryModelSelectionInit(1).catch(() => {
+            // Silently fail retry
+          });
+        }
+      }
+    } else if (this.settings.modelSelection?.enabled && !this.modelSelectionService) {
+      // Service not initialized, try to initialize it
+      if (this.settings.debugMode) {
+        console.log('Model selection service not initialized, attempting initialization...');
+      }
+      this.initializeModelSelection().catch(() => {
+        // Silently fail initialization
+      });
+    }
+    
+    return null;
   }
 }

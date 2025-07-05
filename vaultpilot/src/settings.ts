@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
 import type VaultPilotPlugin from './main';
-import { VaultPilotSettings } from './types';
+import { VaultPilotSettings, ModelSelectionSettings } from './types';
 import { addVaultManagementSettings, DEFAULT_VAULT_MANAGEMENT_SETTINGS } from './vault-settings';
 
 export const DEFAULT_SETTINGS: VaultPilotSettings = {
@@ -14,7 +14,23 @@ export const DEFAULT_SETTINGS: VaultPilotSettings = {
   chatHistoryLimit: 100,
   debugMode: false,
   showIntentDebug: false,
-  vaultManagement: DEFAULT_VAULT_MANAGEMENT_SETTINGS
+  vaultManagement: DEFAULT_VAULT_MANAGEMENT_SETTINGS,
+  modelSelection: {
+    enabled: true,
+    devpipePath: '../dev-pipe',
+    monitoringInterval: 30000,
+    fallbackEnabled: true,
+    cacheDuration: 300000,
+    retryAttempts: 3,
+    timeout: 30000,
+    debugMode: false,
+    userPreferences: {
+      priority: 'balanced',
+      maxCostPerRequest: 0.50,
+      preferredProviders: [],
+      qualityThreshold: 0.7
+    }
+  }
 };
 
 export class VaultPilotSettingTab extends PluginSettingTab {
@@ -193,6 +209,98 @@ export class VaultPilotSettingTab extends PluginSettingTab {
     // Vault Management Settings
     containerEl.createEl('h3', { text: 'Vault Management' });
     addVaultManagementSettings(containerEl, this.plugin);
+
+    // Model Selection Settings
+    containerEl.createEl('h3', { text: 'Model Selection' });
+    
+    new Setting(containerEl)
+      .setName('Enable Model Selection')
+      .setDesc('Enable intelligent AI model selection based on task type and requirements')
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.modelSelection?.enabled ?? true)
+          .onChange(async value => {
+            if (!this.plugin.settings.modelSelection) {
+              this.plugin.settings.modelSelection = DEFAULT_SETTINGS.modelSelection!;
+            }
+            this.plugin.settings.modelSelection.enabled = value;
+            await this.plugin.saveSettings();
+            
+            if (value) {
+              // Initialize model selection service if enabled
+              await this.plugin.initializeModelSelection();
+            } else {
+              // Disconnect model selection service if disabled
+              await this.plugin.disconnectModelSelection();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('DevPipe Path')
+      .setDesc('Path to the DevPipe communication directory')
+      .addText(text =>
+        text
+          .setPlaceholder('../dev-pipe')
+          .setValue(this.plugin.settings.modelSelection?.devpipePath ?? '../dev-pipe')
+          .onChange(async value => {
+            if (!this.plugin.settings.modelSelection) {
+              this.plugin.settings.modelSelection = DEFAULT_SETTINGS.modelSelection!;
+            }
+            this.plugin.settings.modelSelection.devpipePath = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Priority Mode')
+      .setDesc('How to prioritize model selection: performance, cost, or balanced')
+      .addDropdown(dropdown =>
+        dropdown
+          .addOption('performance', 'Performance - Best quality models')
+          .addOption('cost', 'Cost - Most economical models')
+          .addOption('balanced', 'Balanced - Optimal quality/cost ratio')
+          .setValue(this.plugin.settings.modelSelection?.userPreferences.priority ?? 'balanced')
+          .onChange(async value => {
+            if (!this.plugin.settings.modelSelection) {
+              this.plugin.settings.modelSelection = DEFAULT_SETTINGS.modelSelection!;
+            }
+            this.plugin.settings.modelSelection.userPreferences.priority = value as 'performance' | 'cost' | 'balanced';
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Max Cost Per Request')
+      .setDesc('Maximum cost per AI request (in USD)')
+      .addSlider(slider =>
+        slider
+          .setLimits(0.01, 2.00, 0.01)
+          .setValue(this.plugin.settings.modelSelection?.userPreferences.maxCostPerRequest ?? 0.50)
+          .setDynamicTooltip()
+          .onChange(async value => {
+            if (!this.plugin.settings.modelSelection) {
+              this.plugin.settings.modelSelection = DEFAULT_SETTINGS.modelSelection!;
+            }
+            this.plugin.settings.modelSelection.userPreferences.maxCostPerRequest = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Model Selection Debug')
+      .setDesc('Enable debug logging for model selection decisions')
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.modelSelection?.debugMode ?? false)
+          .onChange(async value => {
+            if (!this.plugin.settings.modelSelection) {
+              this.plugin.settings.modelSelection = DEFAULT_SETTINGS.modelSelection!;
+            }
+            this.plugin.settings.modelSelection.debugMode = value;
+            await this.plugin.saveSettings();
+          })
+      );
 
     // Help section
     containerEl.createEl('h2', { text: 'Help & Documentation' });
