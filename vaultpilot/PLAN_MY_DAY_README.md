@@ -14,14 +14,15 @@ The Plan My Day feature integrates your Obsidian daily notes with an AI-powered 
 
 ## 🚀 Quick Start
 
-### 1. Set Up the Backend API
+### 1. Set Up the EvoAgentX Backend
 
-The feature requires a backend service running on `http://localhost:3000/planday`. For testing, you can use the included test server:
+The feature uses your existing EvoAgentX server's task planning capabilities. Make sure:
 
-```bash
-cd vaultpilot
-node test-server.js
-```
+1. **EvoAgentX Server is Running**: Your EvoAgentX backend should be running and accessible
+2. **VaultPilot Connected**: Ensure VaultPilot is connected to EvoAgentX (check the 🟢 status in settings)
+3. **Task Planning Endpoint**: The `/api/obsidian/planning/tasks` endpoint should be available
+
+No additional setup required - it uses your existing EvoAgentX integration!
 
 ### 2. Use the Feature
 
@@ -35,9 +36,9 @@ node test-server.js
 ### Command Execution
 1. **Active File Check**: Verifies you have a note open
 2. **Content Reading**: Reads your entire note content
-3. **API Request**: Sends note content to the planning API
+3. **EvoAgentX Integration**: Sends note content to EvoAgentX's task planning API
 4. **Schedule Injection**: Intelligently updates or creates a schedule section
-5. **User Feedback**: Shows success notification with optional custom message
+5. **User Feedback**: Shows success notification with AI-generated insights
 
 ### Schedule Section Detection
 The feature intelligently finds schedule sections using these patterns:
@@ -51,28 +52,45 @@ The feature intelligently finds schedule sections using these patterns:
 - **No Section**: Appends a new "## Schedule" section
 - **HTML Comments**: Preserves any HTML comments in headings (e.g., for automation IDs)
 
-## 🔧 API Contract
+## 🔧 EvoAgentX Integration
 
 ### Request Format
+The feature sends a TaskPlanningRequest to EvoAgentX:
 ```json
-POST http://localhost:3000/planday
+POST /api/obsidian/planning/tasks
 Content-Type: application/json
+Authorization: Bearer YOUR_API_KEY
 
 {
-  "note": "full note text content including headings, tasks, etc."
+  "goal": "Create a daily schedule based on this note content",
+  "context": "full note text content including headings, tasks, etc.",
+  "timeframe": "1 day"
 }
 ```
 
 ### Response Format
+EvoAgentX returns a TaskPlanningResponse:
 ```json
 {
-  "scheduleMarkdown": "| Time | Task |\n|------|------|\n| 9:00 | Meeting |",
-  "headline": "Your day is planned!"
+  "plan": {
+    "title": "Daily Schedule",
+    "description": "AI-generated schedule based on your note",
+    "tasks": [
+      {
+        "title": "Morning Planning",
+        "description": "Review goals and priorities (Scheduled: 09:00-09:30)",
+        "priority": "high",
+        "estimated_time": "30 minutes"
+      }
+    ],
+    "estimated_duration": "8 hours"
+  },
+  "timeline": "1 day",
+  "milestones": [...]
 }
 ```
 
-- `scheduleMarkdown`: The schedule content in Markdown format (tables, lists, etc.)
-- `headline`: Optional custom success message shown to the user
+The feature converts this into a markdown table for your schedule section.
 
 ## 🛠️ Development
 
@@ -112,7 +130,6 @@ __mocks__/
 └── obsidian.js            # Obsidian API mocks for testing
 
 jest.config.js             # Jest configuration
-test-server.js             # Example API server for testing
 ```
 
 ## 🔍 Error Handling
@@ -120,9 +137,9 @@ test-server.js             # Example API server for testing
 The feature includes comprehensive error handling:
 
 - **No Active File**: "No active note—open today's daily note first."
-- **API Connection**: "Unable to connect to localhost:3000"
+- **EvoAgentX Connection**: Shows specific EvoAgentX connection errors
 - **Invalid Response**: "Invalid schedule data received from API"
-- **Server Errors**: "Planner API error: [specific error message]"
+- **Server Errors**: "Planning error: [specific error message from EvoAgentX]"
 
 ## 🧪 Testing
 
@@ -140,41 +157,30 @@ Run tests with: `npm test`
 
 ## 🔄 Integration Examples
 
-### Simple Planning API
-```javascript
-app.post('/planday', (req, res) => {
-  const { note } = req.body;
-  
-  // Analyze note content
-  const schedule = generateSchedule(note);
-  
-  res.json({
-    scheduleMarkdown: schedule,
-    headline: "Your day is optimized!"
+### EvoAgentX Task Planning Integration
+The feature now leverages EvoAgentX's sophisticated AI capabilities:
+
+```typescript
+// In planner.ts
+export async function fetchSchedule(noteText: string, apiClient: EvoAgentXClient) {
+  const response = await apiClient.planTasks({
+    goal: 'Create a daily schedule based on this note content',
+    context: noteText,
+    timeframe: '1 day'
   });
-});
+  
+  // Convert task plan to schedule format
+  const scheduleMarkdown = convertTasksToSchedule(response.data.plan.tasks);
+  return { scheduleMarkdown, headline: '✨ Smart schedule created!' };
+}
 ```
 
-### AI-Powered Planning
-```javascript
-app.post('/planday', async (req, res) => {
-  const { note } = req.body;
-  
-  // Send to AI service
-  const aiResponse = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [{
-      role: "user",
-      content: `Analyze this daily note and create a schedule: ${note}`
-    }]
-  });
-  
-  res.json({
-    scheduleMarkdown: aiResponse.choices[0].message.content,
-    headline: "AI-powered schedule ready!"
-  });
-});
-```
+### Advanced AI Features
+With EvoAgentX integration, you get:
+- **Context-aware planning**: AI understands your existing tasks and priorities
+- **Calendar integration**: Considers your existing calendar events
+- **Smart time allocation**: Optimizes task scheduling based on priority and duration
+- **Personalized suggestions**: Learns from your patterns and preferences
 
 ## 🤝 Contributing
 

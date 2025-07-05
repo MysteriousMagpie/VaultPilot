@@ -221,7 +221,18 @@ async def plan_tasks(request: TaskPlanningRequest):
         # TODO: Implement task planning
         planning_result = await workflow_processor.plan_tasks(request)
         
-        return APIResponse(success=True, data=planning_result)
+        # Debug logging
+        print(f"🔍 [Debug] Planning result type: {type(planning_result)}")
+        print(f"🔍 [Debug] Planning result has plan: {hasattr(planning_result, 'plan')}")
+        if hasattr(planning_result, 'plan'):
+            print(f"🔍 [Debug] Plan has tasks: {hasattr(planning_result.plan, 'tasks')}")
+            print(f"🔍 [Debug] Task count: {len(planning_result.plan.tasks) if hasattr(planning_result.plan, 'tasks') else 'N/A'}")
+        
+        response = APIResponse(success=True, data=planning_result)
+        print(f"🔍 [Debug] API Response data type: {type(response.data)}")
+        print(f"🔍 [Debug] API Response data: {response.data}")
+        
+        return response
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Task planning failed: {str(e)}")

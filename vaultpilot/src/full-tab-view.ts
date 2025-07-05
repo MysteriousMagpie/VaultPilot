@@ -132,19 +132,22 @@ export class VaultPilotFullTabView extends ItemView {
   }
 
   private createChatSection(chatEl: HTMLElement) {
-    // Chat header
-    const chatHeader = chatEl.createEl('div', { cls: 'vaultpilot-chat-header' });
+    // Chat content container with padding and scrolling
+    const chatContent = chatEl.createEl('div', { cls: 'vaultpilot-chat-content' });
+
+    // Chat header (now inside content)
+    const chatHeader = chatContent.createEl('div', { cls: 'vaultpilot-chat-header' });
     chatHeader.createEl('h3', { text: 'AI Chat Interface' });
 
     // Chat history
-    const chatHistory = chatEl.createEl('div', { cls: 'vaultpilot-chat-history' });
+    const chatHistory = chatContent.createEl('div', { cls: 'vaultpilot-chat-history' });
     chatHistory.createEl('div', { 
       text: 'Welcome! Start a conversation with your AI assistant.',
       cls: 'vaultpilot-chat-welcome'
     });
 
     // Chat input
-    const chatInput = chatEl.createEl('div', { cls: 'vaultpilot-chat-input' });
+    const chatInput = chatContent.createEl('div', { cls: 'vaultpilot-chat-input' });
     const textarea = chatInput.createEl('textarea', { 
       placeholder: 'Type your message here...',
       cls: 'vaultpilot-chat-textarea'
@@ -173,13 +176,14 @@ export class VaultPilotFullTabView extends ItemView {
   }
 
   private createWorkflowSection(workflowEl: HTMLElement) {
-    // Workflow header
-    const workflowHeader = workflowEl.createEl('div', { cls: 'vaultpilot-workflow-header' });
+    // Workflow content container with padding and scrolling
+    const workflowContent = workflowEl.createEl('div', { cls: 'vaultpilot-workflow-content' });
+    
+    // Workflow header (now inside content)
+    const workflowHeader = workflowContent.createEl('div', { cls: 'vaultpilot-workflow-header' });
     workflowHeader.createEl('h3', { text: 'Workflow Management' });
 
-    // Workflow grid container
-    const workflowContainer = workflowEl.createEl('div', { cls: 'vaultpilot-workflow-container' });
-    const workflowGrid = workflowContainer.createEl('div', { cls: 'vaultpilot-workflow-grid' });
+    const workflowGrid = workflowContent.createEl('div', { cls: 'vaultpilot-workflow-grid' });
 
     // Predefined workflows
     const workflows = [
@@ -190,7 +194,8 @@ export class VaultPilotFullTabView extends ItemView {
       { name: 'Daily Planning', icon: '📅', description: 'Plan your day based on your notes' },
       { name: 'Knowledge Graph', icon: '🕸️', description: 'Visualize your knowledge connections' },
       { name: 'Content Search', icon: '🔎', description: 'Advanced search across your vault' },
-      { name: 'Note Templates', icon: '📄', description: 'Create and manage note templates' }
+      { name: 'Note Templates', icon: '📄', description: 'Create and manage note templates' },
+      { name: 'Link Assistant', icon: '🔗', description: 'Intelligent link suggestions and management' }
     ];
 
     workflows.forEach(workflow => {
@@ -209,12 +214,14 @@ export class VaultPilotFullTabView extends ItemView {
   }
 
   private createAnalyticsSection(analyticsEl: HTMLElement) {
-    // Analytics header
-    const analyticsHeader = analyticsEl.createEl('div', { cls: 'vaultpilot-analytics-header' });
+    // Analytics content container with padding and scrolling
+    const analyticsContent = analyticsEl.createEl('div', { cls: 'vaultpilot-analytics-content' });
+    
+    // Analytics header (now inside content)
+    const analyticsHeader = analyticsContent.createEl('div', { cls: 'vaultpilot-analytics-header' });
     analyticsHeader.createEl('h3', { text: 'Vault Analytics' });
 
-    // Charts container
-    const chartsContainer = analyticsEl.createEl('div', { cls: 'vaultpilot-charts-container' });
+    const chartsContainer = analyticsContent.createEl('div', { cls: 'vaultpilot-charts-container' });
     
     // File type distribution
     const fileTypeChart = chartsContainer.createEl('div', { cls: 'vaultpilot-chart-card' });
@@ -614,22 +621,41 @@ export class VaultPilotFullTabView extends ItemView {
           flex: 1;
           display: flex;
           flex-direction: column;
+          min-height: 0;
+          height: 100%;
         }
+        /* Sections just flex-grow and hold their children */
         .vaultpilot-chat-section,
         .vaultpilot-workflow-section,
         .vaultpilot-analytics-section {
-          flex: 1;
-          padding: 16px;
-          display: none;
-          overflow-y: auto;
-          box-sizing: border-box;
-          min-height: 0;
+          display: none;           /* hidden by default */
+          flex: 1 1 0;             /* flex-grow, flex-shrink, base 0 */
+          flex-direction: column;
+          min-height: 0;           /* allow children to shrink/scroll */
         }
+
+        /* Active section shows and flexes */
         .vaultpilot-chat-section.active,
         .vaultpilot-workflow-section.active,
         .vaultpilot-analytics-section.active {
+          display: flex;           /* show & flex when active */
+        }
+
+        /* Content panels handle the scrolling */
+        .vaultpilot-chat-content,
+        .vaultpilot-workflow-content,
+        .vaultpilot-analytics-content {
+          flex: 1 1 0;             /* fill remaining space */
+          min-height: 0;           /* critical to allow overflow */
+          overflow-y: auto;        /* now *this* container scrolls */
+          padding: 16px;
+        }
+
+        /* keep special chat gaps */
+        .vaultpilot-chat-content {
           display: flex;
           flex-direction: column;
+          gap: 16px;
         }
         .vaultpilot-chat-history {
           flex: 1;
@@ -637,8 +663,8 @@ export class VaultPilotFullTabView extends ItemView {
           border: 1px solid var(--background-modifier-border);
           border-radius: 8px;
           padding: 16px;
-          margin-bottom: 16px;
           background: var(--background-secondary);
+          min-height: 0;
         }
         .vaultpilot-chat-input {
           display: flex;
@@ -687,29 +713,27 @@ export class VaultPilotFullTabView extends ItemView {
           background: var(--background-modifier-error);
           color: var(--text-error);
         }
-        .vaultpilot-workflow-section,
-        .vaultpilot-analytics-section {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          min-height: 0;
-        }
+        .vaultpilot-chat-header,
         .vaultpilot-workflow-header,
         .vaultpilot-analytics-header {
-          flex-shrink: 0;
+          margin-bottom: 16px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid var(--background-modifier-border);
         }
-        .vaultpilot-workflow-container,
-        .vaultpilot-charts-container {
-          flex: 1;
-          min-height: 0;
-          overflow-y: auto;
+        .vaultpilot-chat-header h3,
+        .vaultpilot-workflow-header h3,
+        .vaultpilot-analytics-header h3 {
+          margin: 0;
+          color: var(--text-normal);
         }
         .vaultpilot-workflow-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 16px;
           align-content: start;
-          padding-bottom: 16px;
+          padding: 0;
+          margin: 0;
+          width: 100%;
         }
         .vaultpilot-workflow-card {
           background: var(--background-secondary);
@@ -717,6 +741,11 @@ export class VaultPilotFullTabView extends ItemView {
           border-radius: 8px;
           padding: 16px;
           text-align: center;
+          transition: all 0.2s ease;
+        }
+        .vaultpilot-workflow-card:hover {
+          border-color: var(--interactive-accent);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         .vaultpilot-workflow-icon {
           font-size: 32px;
@@ -732,26 +761,30 @@ export class VaultPilotFullTabView extends ItemView {
           cursor: pointer;
         }
         .vaultpilot-charts-container {
-          flex: 1;
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
           gap: 16px;
           align-content: start;
-          padding-bottom: 16px;
-          overflow-y: auto;
-          min-height: 0;
+          padding: 0;
+          margin: 0;
+          width: 100%;
         }
         .vaultpilot-chart-card {
           background: var(--background-secondary);
           border: 1px solid var(--background-modifier-border);
           border-radius: 8px;
           padding: 16px;
+          transition: all 0.2s ease;
+        }
+        .vaultpilot-chart-card:hover {
+          border-color: var(--interactive-accent);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         .vaultpilot-chart-placeholder {
           text-align: center;
           color: var(--text-muted);
           font-style: italic;
-          padding: 40px;
+          padding: 20px;
         }
         .vaultpilot-recent-file {
           padding: 4px 8px;

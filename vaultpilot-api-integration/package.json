@@ -1,0 +1,45 @@
+{
+  "name": "vaultpilot-api-integration",
+  "version": "1.0.0",
+  "description": "Backend-agnostic API integration package for VaultPilot",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "vaultpilot",
+    "obsidian",
+    "api",
+    "integration",
+    "ai",
+    "backend"
+  ],
+  "author": "VaultPilot Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/jest": "^29.0.0",
+    "typescript": "^5.0.0",
+    "jest": "^29.0.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0"
+  },
+  "dependencies": {
+    "zod": "^3.22.0"
+  },
+  "peerDependencies": {
+    "fastapi": "*",
+    "express": "*"
+  },
+  "files": [
+    "dist/**/*",
+    "python/**/*",
+    "examples/**/*"
+  ]
+}

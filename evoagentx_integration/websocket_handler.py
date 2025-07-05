@@ -11,7 +11,12 @@ This file manages WebSocket connections for real-time features like:
 from typing import Dict, List, Set, Optional
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class WebSocketManager:
@@ -23,6 +28,7 @@ class WebSocketManager:
     - Message broadcasting
     - Real-time event handling
     - Connection cleanup
+    - Keep-alive heartbeat system
     """
     
     def __init__(self):
@@ -30,6 +36,13 @@ class WebSocketManager:
         self.connections: Dict[str, Set] = {}
         # Store user sessions
         self.user_sessions: Dict[str, str] = {}
+        # Store connection metadata for health tracking
+        self.connection_metadata: Dict = {}
+        # Heartbeat tracking
+        self.heartbeat_interval = 30  # seconds
+        self.heartbeat_timeout = 60   # seconds
+        # Heartbeat task will be started when first connection is made
+        self._heartbeat_task = None
         
     async def connect(self, websocket, vault_id: str = "default", user_id: Optional[str] = None):
         """Accept a new WebSocket connection"""
@@ -42,11 +55,25 @@ class WebSocketManager:
         # Add connection to vault group
         self.connections[vault_id].add(websocket)
         
+        # Track connection metadata
+        connection_id = id(websocket)
+        self.connection_metadata[connection_id] = {
+            "vault_id": vault_id,
+            "user_id": user_id,
+            "connected_at": datetime.now(),
+            "last_ping": datetime.now(),
+            "websocket": websocket
+        }
+        
         # Track user session if provided
         if user_id:
             self.user_sessions[user_id] = vault_id
             
-        print(f"VaultPilot WebSocket connected: vault={vault_id}, user={user_id}")
+        # Start heartbeat monitor if not already running
+        if self._heartbeat_task is None or self._heartbeat_task.done():
+            self._heartbeat_task = asyncio.create_task(self._heartbeat_monitor())
+            
+        logger.info(f"VaultPilot WebSocket connected: vault={vault_id}, user={user_id}, connection_id={connection_id}")
         
         # Send welcome message
         await self.send_to_connection(websocket, {
@@ -54,12 +81,16 @@ class WebSocketManager:
             "data": {
                 "status": "connected",
                 "vault_id": vault_id,
+                "connection_id": connection_id,
+                "heartbeat_interval": self.heartbeat_interval,
                 "timestamp": datetime.now().isoformat()
             }
         })
         
     async def disconnect(self, websocket, vault_id: str = "default", user_id: Optional[str] = None):
         """Handle WebSocket disconnection"""
+        connection_id = id(websocket)
+        
         # Remove from vault connections
         if vault_id in self.connections:
             self.connections[vault_id].discard(websocket)
@@ -72,7 +103,51 @@ class WebSocketManager:
         if user_id and user_id in self.user_sessions:
             del self.user_sessions[user_id]
             
-        print(f"VaultPilot WebSocket disconnected: vault={vault_id}, user={user_id}")
+        # Clean up connection metadata
+        if connection_id in self.connection_metadata:
+            del self.connection_metadata[connection_id]
+            
+        logger.info(f"VaultPilot WebSocket disconnected: vault={vault_id}, user={user_id}, connection_id={connection_id}")
+        
+    async def _heartbeat_monitor(self):
+        """Background task to monitor connection health and send heartbeats"""
+        while True:
+            try:
+                await asyncio.sleep(self.heartbeat_interval)
+                current_time = datetime.now()
+                dead_connections = []
+                
+                # Check all connections for heartbeat timeout
+                for connection_id, metadata in self.connection_metadata.items():
+                    websocket = metadata["websocket"]
+                    last_ping = metadata["last_ping"]
+                    
+                    # Check if connection is stale
+                    if current_time - last_ping > timedelta(seconds=self.heartbeat_timeout):
+                        logger.warning(f"Connection {connection_id} heartbeat timeout")
+                        dead_connections.append((websocket, metadata["vault_id"], metadata["user_id"]))
+                        continue
+                    
+                    # Send heartbeat ping
+                    try:
+                        await self.send_to_connection(websocket, {
+                            "type": "heartbeat",
+                            "data": {
+                                "timestamp": current_time.isoformat(),
+                                "connection_id": connection_id
+                            }
+                        })
+                    except Exception as e:
+                        logger.error(f"Failed to send heartbeat to connection {connection_id}: {e}")
+                        dead_connections.append((websocket, metadata["vault_id"], metadata["user_id"]))
+                
+                # Clean up dead connections
+                for websocket, vault_id, user_id in dead_connections:
+                    await self.disconnect(websocket, vault_id, user_id)
+                    
+            except Exception as e:
+                logger.error(f"Error in heartbeat monitor: {e}")
+                await asyncio.sleep(5)  # Wait before retrying
         
     async def send_to_connection(self, websocket, message: dict):
         """Send message to a specific connection"""
@@ -83,8 +158,19 @@ class WebSocketManager:
                 "timestamp": datetime.now().isoformat()
             }
             await websocket.send_text(json.dumps(formatted_message))
+            
+            # Update last activity for heartbeat tracking
+            connection_id = id(websocket)
+            if connection_id in self.connection_metadata:
+                self.connection_metadata[connection_id]["last_ping"] = datetime.now()
+                
         except Exception as e:
-            print(f"Failed to send message to connection: {e}")
+            logger.error(f"Failed to send message to connection: {e}")
+            # Remove failed connection
+            connection_id = id(websocket)
+            if connection_id in self.connection_metadata:
+                metadata = self.connection_metadata[connection_id]
+                await self.disconnect(websocket, metadata["vault_id"], metadata["user_id"])
             
     async def broadcast_to_vault(self, vault_id: str, message: dict):
         """Broadcast message to all connections in a vault"""
@@ -99,9 +185,13 @@ class WebSocketManager:
             try:
                 await self.send_to_connection(websocket, message)
             except Exception as e:
-                print(f"Failed to send to connection, removing: {e}")
+                logger.error(f"Failed to send to connection, removing: {e}")
                 # Remove failed connection
                 self.connections[vault_id].discard(websocket)
+                connection_id = id(websocket)
+                if connection_id in self.connection_metadata:
+                    metadata = self.connection_metadata[connection_id] 
+                    await self.disconnect(websocket, vault_id, metadata.get("user_id"))
                 
     async def broadcast_to_user(self, user_id: str, message: dict):
         """Send message to a specific user"""
@@ -173,6 +263,16 @@ class WebSocketManager:
     def get_active_vaults(self) -> List[str]:
         """Get list of vaults with active connections"""
         return list(self.connections.keys())
+    
+    async def shutdown(self):
+        """Shutdown the WebSocket manager and cleanup resources"""
+        if self._heartbeat_task and not self._heartbeat_task.done():
+            self._heartbeat_task.cancel()
+            try:
+                await self._heartbeat_task
+            except asyncio.CancelledError:
+                pass
+        logger.info("WebSocket manager shutdown complete")
 
 
 # Global WebSocket manager instance
@@ -220,11 +320,32 @@ async def handle_client_message(websocket, vault_id: str, message: dict):
     data = message.get("data", {})
     
     if message_type == "ping":
-        # Respond to ping with pong
+        # Respond to ping with pong and update heartbeat
+        connection_id = id(websocket)
+        if connection_id in websocket_manager.connection_metadata:
+            websocket_manager.connection_metadata[connection_id]["last_ping"] = datetime.now()
+            
         await websocket_manager.send_to_connection(websocket, {
             "type": "pong",
-            "data": {"timestamp": datetime.now().isoformat()}
+            "data": {
+                "timestamp": datetime.now().isoformat(),
+                "connection_id": connection_id
+            }
         })
+        
+    elif message_type == "pong":
+        # Update heartbeat timestamp on pong response
+        connection_id = id(websocket)
+        if connection_id in websocket_manager.connection_metadata:
+            websocket_manager.connection_metadata[connection_id]["last_ping"] = datetime.now()
+        logger.debug(f"Received pong from connection {connection_id}")
+        
+    elif message_type == "heartbeat_response":
+        # Handle client heartbeat responses
+        connection_id = id(websocket)
+        if connection_id in websocket_manager.connection_metadata:
+            websocket_manager.connection_metadata[connection_id]["last_ping"] = datetime.now()
+        logger.debug(f"Received heartbeat response from connection {connection_id}")
         
     elif message_type == "vault_update":
         # Handle vault content updates
@@ -246,7 +367,15 @@ async def handle_client_message(websocket, vault_id: str, message: dict):
         })
         
     else:
-        print(f"Unknown message type: {message_type}")
+        logger.warning(f"Unknown message type: {message_type}")
+        # Send error response for unknown message types
+        await websocket_manager.send_to_connection(websocket, {
+            "type": "error",
+            "data": {
+                "message": f"Unknown message type: {message_type}",
+                "received_message": message
+            }
+        })
 
 
 # Helper functions for integration with your AI systems

@@ -6,15 +6,15 @@ This feature adds a "Plan My Day" command to the VaultPilot Obsidian plugin that
 
 1. **Command Registration**: Adds a "Plan My Day" command to the command palette
 2. **Active File Reading**: Reads the entire content of the currently active note
-3. **API Integration**: Sends the note content to `http://localhost:3000/planday` via POST
+3. **EvoAgentX Integration**: Sends the note content to EvoAgentX's task planning API
 4. **Schedule Section Management**: Finds existing `## Schedule` sections or creates new ones
-5. **Content Replacement**: Replaces or appends the schedule content with API response
-6. **User Feedback**: Shows success/error notifications with optional headline
+5. **Content Replacement**: Replaces or appends the schedule content with AI-generated response
+6. **User Feedback**: Shows success/error notifications with AI insights
 
 ## Files Created/Modified:
 
 ### New Files:
-- `src/planner.ts` - Core planner functionality and API integration
+- `src/planner.ts` - Core planner functionality and EvoAgentX integration
 - `__tests__/planner.test.ts` - Comprehensive Jest tests for regex and injection logic
 - `jest.config.js` - Jest configuration for testing
 - `__mocks__/obsidian.js` - Mock Obsidian API for testing
@@ -27,9 +27,10 @@ This feature adds a "Plan My Day" command to the VaultPilot Obsidian plugin that
 
 ## Core Functions:
 
-### `fetchSchedule(noteText: string): Promise<PlannerResponse>`
-- Makes HTTP POST request to planner API
-- Returns schedule markdown and optional headline
+### `fetchSchedule(noteText: string, apiClient: EvoAgentXClient): Promise<PlannerResponse>`
+- Makes request to EvoAgentX task planning API
+- Converts task planning response to schedule markdown format
+- Returns schedule markdown and AI-generated headline
 
 ### `findScheduleSection(text: string): RegExpMatchArray | null`
 - Uses regex to locate existing Schedule sections
@@ -47,27 +48,40 @@ This feature adds a "Plan My Day" command to the VaultPilot Obsidian plugin that
 
 ## API Contract:
 
-**Request to `http://localhost:3000/planday`:**
+**Request to EvoAgentX `/api/obsidian/planning/tasks`:**
 ```json
 {
-  "note": "full note text content"
+  "goal": "Create a daily schedule based on this note content",
+  "context": "full note text content",
+  "timeframe": "1 day"
 }
 ```
 
 **Expected Response:**
 ```json
 {
-  "scheduleMarkdown": "| Time | Task |\n|------|------|\n| 9:00 | Meeting |",
-  "headline": "Your day is planned!"
+  "plan": {
+    "title": "Daily Schedule",
+    "tasks": [
+      {
+        "title": "Task Name",
+        "description": "Task description (Scheduled: 09:00-10:00)",
+        "priority": "high",
+        "estimated_time": "1 hour"
+      }
+    ],
+    "estimated_duration": "8 hours"
+  },
+  "timeline": "1 day"
 }
 ```
 
 ## Error Handling:
 
 - No active file: Shows "No active note—open today's daily note first."
-- API errors: Shows "Planner API error: [specific error message]"
-- Invalid response: Shows "Invalid schedule data received from API"
-- Network issues: Shows "Unable to connect to localhost:3000"
+- EvoAgentX errors: Shows "Planning error: [specific error message from EvoAgentX]"
+- Invalid response: Shows "Planning error: Invalid response format from EvoAgentX"
+- Network issues: Shows "Planning error: Unable to connect to EvoAgentX server"
 
 ## Testing:
 

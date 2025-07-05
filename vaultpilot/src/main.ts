@@ -6,7 +6,8 @@ import { ChatModal } from './chat-modal';
 import { WorkflowModal } from './workflow-modal';
 import { EvoAgentXClient } from './api-client';
 import { VaultPilotSettings, CopilotResponse } from './types';
-import { fetchSchedule, injectSchedule, validateScheduleMarkdown } from './planner';
+import { fetchSchedule, injectSchedule, validateScheduleMarkdown, findScheduleSection } from './planner';
+import { planMyDayDebugger } from './plan-my-day-debug';
 import { setApp } from './vault-utils';
 import { VaultManagementClient } from './vault-api-client';
 import { createVaultManagementCommands } from './vault-commands';
@@ -133,6 +134,12 @@ export default class VaultPilotPlugin extends Plugin {
       id: 'plan-my-day',
       name: 'Plan My Day',
       callback: () => this.planMyDay()
+    });
+
+    this.addCommand({
+      id: 'plan-my-day-debug',
+      name: 'Plan My Day - Debug Connection',
+      callback: () => this.debugPlanMyDay()
     });
 
     this.addCommand({
@@ -407,55 +414,213 @@ export default class VaultPilotPlugin extends Plugin {
   }
 
   async planMyDay() {
+    console.log('🚀 [Plan My Day] Command started');
+    
     const activeFile = this.app.workspace.getActiveFile();
     
     if (!activeFile) {
+      console.warn('⚠️ [Plan My Day] No active file found');
       new Notice('No active note—open today\'s daily note first.');
       return;
     }
 
-    const notice = new Notice('Planning your day...', 0);
+    console.log('📁 [Plan My Day] Active file:', {
+      name: activeFile.name,
+      path: activeFile.path,
+      extension: activeFile.extension
+    });
+
+    const notice = new Notice('Planning your day with AI...', 0);
 
     try {
+      console.log('📖 [Plan My Day] Reading file content...');
+      
       // Read the entire file content
       const fileText = await this.app.vault.read(activeFile);
       
-      // Fetch schedule from API
-      const { scheduleMarkdown, headline } = await fetchSchedule(fileText);
+      console.log('📝 [Plan My Day] File content read:', {
+        length: fileText.length,
+        hasContent: fileText.trim().length > 0,
+        firstLine: fileText.split('\n')[0],
+        lineCount: fileText.split('\n').length
+      });
 
+      console.log('🔍 [Plan My Day] Checking API client...');
+      console.log('🔗 [Plan My Day] API client status:', {
+        exists: !!this.apiClient,
+        type: typeof this.apiClient,
+        isConnected: this.apiClient ? 'available' : 'not available'
+      });
+
+      if (!this.apiClient) {
+        const error = 'API client not initialized. Check VaultPilot settings and connection.';
+        console.error('❌ [Plan My Day] Error:', error);
+        throw new Error(error);
+      }
+      
+      console.log('📤 [Plan My Day] Fetching schedule from EvoAgentX...');
+      
+      // Fetch schedule from EvoAgentX instead of localhost:3000
+      const { scheduleMarkdown, headline } = await fetchSchedule(fileText, this.apiClient);
+
+      console.log('📋 [Plan My Day] Schedule received:', {
+        markdownLength: scheduleMarkdown.length,
+        headline: headline,
+        firstLine: scheduleMarkdown.split('\n')[0]
+      });
+
+      console.log('✅ [Plan My Day] Validating schedule...');
+      
       // Validate the returned schedule
       if (!validateScheduleMarkdown(scheduleMarkdown)) {
-        throw new Error('Invalid schedule data received from API');
+        const error = 'Invalid schedule data received from API';
+        console.error('❌ [Plan My Day] Validation failed:', {
+          scheduleMarkdown: scheduleMarkdown.substring(0, 200),
+          length: scheduleMarkdown.length
+        });
+        throw new Error(error);
       }
+
+      console.log('📝 [Plan My Day] Injecting schedule into note...');
+      
+      // Check if note already has a schedule section
+      const existingSection = findScheduleSection(fileText);
+      console.log('🔍 [Plan My Day] Existing schedule section:', {
+        found: !!existingSection,
+        heading: existingSection?.[1]?.substring(0, 50)
+      });
 
       // Inject the schedule into the note
       const updatedText = injectSchedule(fileText, scheduleMarkdown);
 
+      console.log('💾 [Plan My Day] Updating file...', {
+        originalLength: fileText.length,
+        updatedLength: updatedText.length,
+        changed: fileText !== updatedText
+      });
+
       // Update the file
       await this.app.vault.modify(activeFile, updatedText);
+
+      console.log('✅ [Plan My Day] File updated successfully');
 
       // Hide the progress notice
       notice.hide();
 
       // Show success notice
       const successMessage = headline ? `${headline} ✅` : 'Schedule inserted ✅';
+      console.log('🎉 [Plan My Day] Success:', successMessage);
       new Notice(successMessage);
 
     } catch (error) {
+      console.error('❌ [Plan My Day] Operation failed:', error);
+      console.error('🔍 [Plan My Day] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        type: typeof error,
+        name: error instanceof Error ? error.name : 'Unknown'
+      });
+      
       notice.hide();
       
-      // Handle different types of errors
+      // Handle different types of errors from EvoAgentX
       if (error instanceof Error) {
-        if (error.message.includes('JSON')) {
-          new Notice('Planner API error: Invalid response format');
-        } else if (error.message.includes('fetch') || error.message.includes('network')) {
-          new Notice('Planner API error: Unable to connect to localhost:3000');
+        const errorMessage = error.message;
+        console.log('🔍 [Plan My Day] Analyzing error message:', errorMessage);
+        
+        if (errorMessage.includes('API client not initialized')) {
+          console.error('❌ [Plan My Day] API client not initialized');
+          new Notice('Planning error: VaultPilot not connected to EvoAgentX. Check settings and restart plugin.');
+        } else if (errorMessage.includes('does not have planTasks method')) {
+          console.error('❌ [Plan My Day] API client missing planTasks method');
+          new Notice('Planning error: EvoAgentX API client outdated. Please update VaultPilot plugin.');
+        } else if (errorMessage.includes('JSON') || errorMessage.includes('Invalid schedule data')) {
+          console.error('❌ [Plan My Day] Invalid response format');
+          new Notice('Planning error: Invalid response format from EvoAgentX');
+        } else if (errorMessage.includes('fetch') || errorMessage.includes('network') || errorMessage.includes('Failed to fetch')) {
+          console.error('❌ [Plan My Day] Network error');
+          new Notice('Planning error: Unable to connect to EvoAgentX server. Check your connection and server status.');
+        } else if (errorMessage.includes('Failed to generate schedule') || errorMessage.includes('Schedule fetch failed')) {
+          console.error('❌ [Plan My Day] Schedule generation failed');
+          new Notice('Planning error: EvoAgentX task planning failed. Check server logs for details.');
+        } else if (errorMessage.includes('No data in API response')) {
+          console.error('❌ [Plan My Day] Empty API response');
+          new Notice('Planning error: EvoAgentX returned empty response. Try again or check server status.');
         } else {
-          new Notice(`Planner API error: ${error.message}`);
+          console.error('❌ [Plan My Day] Unhandled error');
+          new Notice(`Planning error: ${errorMessage.substring(0, 100)}${errorMessage.length > 100 ? '...' : ''}`);
         }
       } else {
-        new Notice('Planner API error: Unknown error occurred');
+        console.error('❌ [Plan My Day] Non-Error object thrown');
+        new Notice('Planning error: Unknown error occurred with EvoAgentX');
       }
+      
+      // Always log the full error for debugging
+      console.log('🔍 [Plan My Day] Full error log completed');
+    }
+  }
+
+  async debugPlanMyDay() {
+    console.log('🔍 [Plan My Day Debug] Starting comprehensive debug...');
+    planMyDayDebugger.clearLogs();
+    
+    const notice = new Notice('Running Plan My Day diagnostics...', 0);
+
+    try {
+      // Test 1: Check active file
+      const activeFile = this.app.workspace.getActiveFile();
+      planMyDayDebugger.log('📁 Active file check', {
+        hasActiveFile: !!activeFile,
+        fileName: activeFile?.name,
+        fileExtension: activeFile?.extension
+      });
+
+      // Test 2: Analyze API client
+      const apiAnalysis = planMyDayDebugger.analyzeApiClient(this.apiClient);
+      planMyDayDebugger.log('🔗 API client analysis', apiAnalysis);
+
+      // Test 3: Test EvoAgentX connection
+      if (this.apiClient) {
+        const connectionTest = await planMyDayDebugger.testConnection(this.apiClient);
+        planMyDayDebugger.log('🌐 Connection test result', connectionTest);
+
+        // Test 4: Test task planning functionality
+        if (connectionTest.success) {
+          const planningTest = await planMyDayDebugger.testTaskPlanning(
+            this.apiClient, 
+            'Test note with some tasks:\n- Write code\n- Test functionality\n- Review results'
+          );
+          planMyDayDebugger.log('📋 Task planning test result', planningTest);
+        }
+      }
+
+      // Test 5: Check settings
+      planMyDayDebugger.log('⚙️ Plugin settings', {
+        backendUrl: this.settings.backendUrl,
+        hasApiKey: !!this.settings.apiKey,
+        debugMode: this.settings.debugMode
+      });
+
+      notice.hide();
+
+      // Show results in a modal or console
+      const logs = planMyDayDebugger.getLogs();
+      console.log('🔍 [Plan My Day Debug] Complete diagnostic log:', logs);
+      
+      const logSummary = logs.slice(-5).join('\n'); // Last 5 entries
+      new Notice(`Debug complete! Check console for full logs.\n\nLast entries:\n${logSummary}`, 10000);
+
+      // Create a debug file if active file exists
+      if (activeFile) {
+        const debugContent = `# Plan My Day Debug Report\n\nGenerated: ${new Date().toISOString()}\n\n## Diagnostic Results\n\n\`\`\`\n${planMyDayDebugger.exportLogs()}\n\`\`\``;
+        await this.app.vault.create(`Plan My Day Debug - ${Date.now()}.md`, debugContent);
+        new Notice('Debug report saved as new note!');
+      }
+
+    } catch (error) {
+      notice.hide();
+      planMyDayDebugger.error('Debug process failed', error);
+      new Notice(`Debug failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
