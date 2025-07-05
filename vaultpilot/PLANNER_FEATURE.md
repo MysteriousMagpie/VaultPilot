@@ -7,9 +7,28 @@ This feature adds a "Plan My Day" command to the VaultPilot Obsidian plugin that
 1. **Command Registration**: Adds a "Plan My Day" command to the command palette
 2. **Active File Reading**: Reads the entire content of the currently active note
 3. **EvoAgentX Integration**: Sends the note content to EvoAgentX's task planning API
-4. **Schedule Section Management**: Finds existing `## Schedule` sections or creates new ones
-5. **Content Replacement**: Replaces or appends the schedule content with AI-generated response
+4. **Smart Content Management**: Uses VaultPilot comment wrappers or fallback to Schedule sections
+5. **Content Replacement**: Replaces existing plan content or creates new wrapper at top of note
 6. **User Feedback**: Shows success/error notifications with AI insights
+
+### ✨ New: VaultPilot Plan Wrapper System
+
+The feature now prioritizes a non-intrusive comment wrapper system:
+
+**Priority 1**: VaultPilot Wrapper
+```markdown
+<!-- vp:plan:start -->
+...plan content...
+<!-- vp:plan:end -->
+```
+
+**Priority 2**: Legacy Schedule Section (backward compatibility)
+```markdown
+## Schedule
+...plan content...
+```
+
+**Priority 3**: Create new wrapper at top of note
 
 ## Files Created/Modified:
 
@@ -32,15 +51,21 @@ This feature adds a "Plan My Day" command to the VaultPilot Obsidian plugin that
 - Converts task planning response to schedule markdown format
 - Returns schedule markdown and AI-generated headline
 
+### `findPlanSection(text: string): RegExpMatchArray | null` ⭐ NEW
+- Uses regex to locate VaultPilot comment wrapper (`<!-- vp:plan:start -->...<!-- vp:plan:end -->`)
+- Case-insensitive matching for wrapper comments
+- Returns match with start comment, content, and end comment
+
 ### `findScheduleSection(text: string): RegExpMatchArray | null`
-- Uses regex to locate existing Schedule sections
+- Uses regex to locate existing Schedule sections (backward compatibility)
 - Handles variations like "## Schedule", "## My Schedule", etc.
 - Avoids false matches like "## Reschedule"
 
-### `injectSchedule(originalText: string, scheduleMarkdown: string): string`
-- Replaces existing schedule content or appends new section
-- Preserves heading format including HTML comments
-- Returns updated note text
+### `injectSchedule(originalText: string, scheduleMarkdown: string): string` ⭐ UPDATED
+- **Priority 1**: Replaces content within VaultPilot comment wrapper if found
+- **Priority 2**: Replaces existing schedule section content if found (preserves heading)
+- **Priority 3**: Creates new VaultPilot wrapper at top of note
+- Returns updated note text with smart placement logic
 
 ### `validateScheduleMarkdown(scheduleMarkdown: string): boolean`
 - Basic validation of schedule content

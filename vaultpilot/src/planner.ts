@@ -142,6 +142,17 @@ export async function fetchSchedule(noteText: string, apiClient: any): Promise<P
 }
 
 /**
+ * Finds and extracts the VaultPilot plan section from note text using comment wrapper
+ * @param text - The full note text
+ * @returns Match result with plan section details or null
+ */
+export function findPlanSection(text: string): RegExpMatchArray | null {
+  // Look for the VaultPilot plan comment wrapper
+  const planRegex = /(<!-- vp:plan:start -->)([\s\S]*?)(<!-- vp:plan:end -->)/i;
+  return text.match(planRegex);
+}
+
+/**
  * Finds and extracts the Schedule section from note text
  * @param text - The full note text
  * @returns Match result with schedule section details or null
@@ -173,30 +184,51 @@ export function injectSchedule(originalText: string, scheduleMarkdown: string): 
     hasOriginalContent: originalText.trim().length > 0
   });
   
-  const match = findScheduleSection(originalText);
+  // First, check for VaultPilot comment wrapper
+  const planMatch = findPlanSection(originalText);
   
-  if (match) {
+  if (planMatch) {
+    console.log('🔄 [Plan My Day] Replacing existing plan section with comment wrapper');
+    console.log('📋 [Plan My Day] Found wrapped plan section:', {
+      startComment: planMatch[1],
+      contentLength: planMatch[2]?.length || 0,
+      endComment: planMatch[3]
+    });
+    
+    // Replace everything inside the comment wrapper
+    const [fullMatch, startComment, , endComment] = planMatch;
+    const replacement = `${startComment}\n${scheduleMarkdown}\n${endComment}`;
+    const result = originalText.replace(fullMatch, replacement);
+    
+    console.log('✅ [Plan My Day] Plan section replaced within comment wrapper');
+    return result;
+  }
+  
+  // Fall back to checking for Schedule section
+  const scheduleMatch = findScheduleSection(originalText);
+  
+  if (scheduleMatch) {
     console.log('🔄 [Plan My Day] Replacing existing schedule section');
     console.log('📋 [Plan My Day] Found section:', {
-      headingMatch: match[1]?.substring(0, 50),
-      contentMatch: match[2]?.substring(0, 100)
+      headingMatch: scheduleMatch[1]?.substring(0, 50),
+      contentMatch: scheduleMatch[2]?.substring(0, 100)
     });
     
     // Replace existing schedule section (keep heading, replace content)
-    const [fullMatch, heading] = match;
+    const [fullMatch, heading] = scheduleMatch;
     const replacement = heading + scheduleMarkdown;
     const result = originalText.replace(fullMatch, replacement);
     
     console.log('✅ [Plan My Day] Schedule section replaced');
     return result;
   } else {
-    console.log('➕ [Plan My Day] Appending new schedule section');
+    console.log('➕ [Plan My Day] Adding new plan section with comment wrapper at top');
     
-    // Append new schedule section
-    const newSection = `\n\n## Schedule\n${scheduleMarkdown}`;
-    const result = originalText + newSection;
+    // Insert new plan section with comment wrapper at the top of the note
+    const wrappedPlan = `<!-- vp:plan:start -->\n${scheduleMarkdown}\n<!-- vp:plan:end -->\n\n`;
+    const result = wrappedPlan + originalText;
     
-    console.log('✅ [Plan My Day] New schedule section appended');
+    console.log('✅ [Plan My Day] New plan section with wrapper added at top');
     return result;
   }
 }

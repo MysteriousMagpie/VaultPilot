@@ -4,7 +4,7 @@
  */
 
 // We'll test the pure functions that don't depend on obsidian
-import { findScheduleSection, injectSchedule, validateScheduleMarkdown } from '../src/planner';
+import { findScheduleSection, findPlanSection, injectSchedule, validateScheduleMarkdown } from '../src/planner';
 
 describe('Planner Functions', () => {
   describe('findScheduleSection', () => {
@@ -128,6 +128,93 @@ Other content`;
     });
   });
 
+  describe('findPlanSection', () => {
+    test('should find existing plan section with comment wrapper', () => {
+      const text = `# Daily Note
+
+<!-- vp:plan:start -->
+| Time | Task |
+|------|------|
+| 9:00 | Meeting |
+<!-- vp:plan:end -->
+
+## Notes
+Some other content`;
+
+      const result = findPlanSection(text);
+      expect(result).not.toBeNull();
+      expect(result![1]).toBe('<!-- vp:plan:start -->');
+      expect(result![2]).toContain('| Time | Task |');
+      expect(result![3]).toBe('<!-- vp:plan:end -->');
+    });
+
+    test('should find plan section with extra content and spacing', () => {
+      const text = `# Daily Note
+
+Some intro text
+
+<!-- vp:plan:start -->
+
+## Today's Schedule
+| Time | Task |
+|------|------|
+| 9:00 AM | Morning standup |
+| 10:00 AM | Code review |
+
+<!-- vp:plan:end -->
+
+## Notes
+Other content`;
+
+      const result = findPlanSection(text);
+      expect(result).not.toBeNull();
+      expect(result![1]).toBe('<!-- vp:plan:start -->');
+      expect(result![2]).toContain('## Today\'s Schedule');
+      expect(result![2]).toContain('| 9:00 AM | Morning standup |');
+      expect(result![3]).toBe('<!-- vp:plan:end -->');
+    });
+
+    test('should handle case insensitive comment wrapper', () => {
+      const text = `# Daily Note
+
+<!-- VP:PLAN:START -->
+Content here
+<!-- VP:PLAN:END -->`;
+
+      const result = findPlanSection(text);
+      expect(result).not.toBeNull();
+      expect(result![1]).toBe('<!-- VP:PLAN:START -->');
+      expect(result![2]).toContain('Content here');
+      expect(result![3]).toBe('<!-- VP:PLAN:END -->');
+    });
+
+    test('should return null when no plan section exists', () => {
+      const text = `# Daily Note
+
+## Schedule
+| Time | Task |
+|------|------|
+| 9:00 | Meeting |
+
+## Notes
+Some content`;
+
+      const result = findPlanSection(text);
+      expect(result).toBeNull();
+    });
+
+    test('should return null with partial comment wrapper', () => {
+      const text = `# Daily Note
+
+<!-- vp:plan:start -->
+Content here
+(missing end comment)`;
+
+      const result = findPlanSection(text);
+      expect(result).toBeNull();
+    });
+  });
+
   describe('injectSchedule', () => {
     test('should replace existing schedule content while keeping heading', () => {
       const originalText = `# Daily Note
@@ -151,7 +238,7 @@ Some other content`;
       expect(result).toContain('## Notes');
     });
 
-    test('should append new schedule section when none exists', () => {
+    test('should create new plan wrapper at top when no existing sections (original behavior)', () => {
       const originalText = `# Daily Note
 
 ## Notes
@@ -166,10 +253,13 @@ Some content
 
       const result = injectSchedule(originalText, newSchedule);
       
-      expect(result).toBe(originalText + '\n\n## Schedule\n' + newSchedule);
+      expect(result.startsWith('<!-- vp:plan:start -->')).toBe(true);
+      expect(result).toContain('| 9:00 | New Meeting |');
+      expect(result).toContain('<!-- vp:plan:end -->');
+      expect(result).toContain('# Daily Note');
     });
 
-    test('should handle empty original text', () => {
+    test('should handle empty original text with plan wrapper', () => {
       const originalText = '';
       const newSchedule = `| Time | Task |
 |------|------|
@@ -177,7 +267,9 @@ Some content
 
       const result = injectSchedule(originalText, newSchedule);
       
-      expect(result).toBe('\n\n## Schedule\n' + newSchedule);
+      expect(result.startsWith('<!-- vp:plan:start -->')).toBe(true);
+      expect(result).toContain('| 9:00 | Meeting |');
+      expect(result).toContain('<!-- vp:plan:end -->');
     });
 
     test('should preserve HTML comments in existing heading', () => {
@@ -221,6 +313,124 @@ This should also not be replaced`;
       expect(result).toContain('## Schedule\n' + newSchedule);
       expect(result).toContain('## Reschedule Tasks\nThis should also not be replaced');
       expect(result).not.toContain('This should be replaced');
+    });
+
+    // Tests for plan wrapper functionality
+    test('should replace content within existing plan wrapper', () => {
+      const originalText = `# Daily Note
+
+<!-- vp:plan:start -->
+| Time | Task |
+|------|------|
+| 9:00 | Old Meeting |
+<!-- vp:plan:end -->
+
+## Notes
+Some content`;
+
+      const newSchedule = `| Time | Task |
+|------|------|
+| 9:00 | New Meeting |
+| 10:00 | Code review |`;
+
+      const result = injectSchedule(originalText, newSchedule);
+      
+      expect(result).toContain('<!-- vp:plan:start -->');
+      expect(result).toContain('| 9:00 | New Meeting |');
+      expect(result).toContain('| 10:00 | Code review |');
+      expect(result).toContain('<!-- vp:plan:end -->');
+      expect(result).not.toContain('Old Meeting');
+      expect(result).toContain('## Notes');
+    });
+
+    test('should prioritize plan wrapper over schedule section', () => {
+      const originalText = `# Daily Note
+
+<!-- vp:plan:start -->
+Old plan content
+<!-- vp:plan:end -->
+
+## Schedule
+Old schedule content
+
+## Notes
+Some content`;
+
+      const newSchedule = `| Time | Task |
+|------|------|
+| 9:00 | New Meeting |`;
+
+      const result = injectSchedule(originalText, newSchedule);
+      
+      // Should replace in plan wrapper, not schedule section
+      expect(result).toContain('<!-- vp:plan:start -->');
+      expect(result).toContain('| 9:00 | New Meeting |');
+      expect(result).toContain('<!-- vp:plan:end -->');
+      expect(result).toContain('## Schedule\nOld schedule content'); // Schedule section unchanged
+      expect(result).not.toContain('Old plan content');
+    });
+
+    test('should create new plan wrapper at top when no existing sections', () => {
+      const originalText = `# Daily Note
+
+## Notes
+Some content
+
+## Tasks
+- Task 1
+- Task 2`;
+
+      const newSchedule = `| Time | Task |
+|------|------|
+| 9:00 | Meeting |`;
+
+      const result = injectSchedule(originalText, newSchedule);
+      
+      expect(result.startsWith('<!-- vp:plan:start -->')).toBe(true);
+      expect(result).toContain('| 9:00 | Meeting |');
+      expect(result).toContain('<!-- vp:plan:end -->');
+      expect(result).toContain('# Daily Note');
+      expect(result).toContain('## Notes');
+    });
+
+    test('should fallback to schedule section when no plan wrapper exists', () => {
+      const originalText = `# Daily Note
+
+## Schedule
+Old schedule
+
+## Notes
+Some content`;
+
+      const newSchedule = `| Time | Task |
+|------|------|
+| 9:00 | New Meeting |`;
+
+      const result = injectSchedule(originalText, newSchedule);
+      
+      expect(result).toContain('## Schedule\n' + newSchedule);
+      expect(result).not.toContain('Old schedule');
+      expect(result).not.toContain('<!-- vp:plan:start -->');
+    });
+
+    test('should handle empty plan wrapper', () => {
+      const originalText = `# Daily Note
+
+<!-- vp:plan:start -->
+<!-- vp:plan:end -->
+
+## Notes
+Some content`;
+
+      const newSchedule = `| Time | Task |
+|------|------|
+| 9:00 | Meeting |`;
+
+      const result = injectSchedule(originalText, newSchedule);
+      
+      expect(result).toContain('<!-- vp:plan:start -->');
+      expect(result).toContain('| 9:00 | Meeting |');
+      expect(result).toContain('<!-- vp:plan:end -->');
     });
   });
 

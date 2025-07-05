@@ -47,10 +47,40 @@ The feature intelligently finds schedule sections using these patterns:
 - `## Daily Schedule`
 - And more variations containing "Schedule"
 
-### Content Management
-- **Existing Section**: Replaces content while preserving the heading
-- **No Section**: Appends a new "## Schedule" section
-- **HTML Comments**: Preserves any HTML comments in headings (e.g., for automation IDs)
+### Content Management - Updated Behavior
+
+The Plan My Day feature now uses a smart priority system for managing plan content:
+
+#### 🎯 VaultPilot Plan Wrapper (Preferred)
+The preferred method uses comment wrappers that won't interfere with other tools:
+```markdown
+<!-- vp:plan:start -->
+| Time | Task |
+|------|------|
+| 9:00 AM | Morning standup |
+| 10:00 AM | Deep work session |
+<!-- vp:plan:end -->
+```
+
+#### 🔄 Legacy Schedule Section (Fallback)
+For backward compatibility, the old Schedule section format is still supported:
+```markdown
+## Schedule
+| Time | Task |
+|------|------|
+| 9:00 AM | Meeting |
+```
+
+#### Priority Logic
+1. **VaultPilot Wrapper Found**: Replaces content inside `<!-- vp:plan:start -->...<!-- vp:plan:end -->`
+2. **Schedule Section Found**: Replaces content in `## Schedule` section (if no wrapper exists)
+3. **Nothing Found**: Creates new wrapper at the top of the note
+
+#### Benefits of the New System
+- **Non-intrusive**: Comment wrappers are invisible in reading mode
+- **Tool-agnostic**: Won't conflict with other planning or automation tools
+- **Easily identifiable**: Clear markers for automated content
+- **Backward compatible**: Existing Schedule sections continue to work
 
 ## 🔧 EvoAgentX Integration
 

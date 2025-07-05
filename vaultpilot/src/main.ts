@@ -6,7 +6,7 @@ import { ChatModal } from './chat-modal';
 import { WorkflowModal } from './workflow-modal';
 import { EvoAgentXClient } from './api-client';
 import { VaultPilotSettings, CopilotResponse } from './types';
-import { fetchSchedule, injectSchedule, validateScheduleMarkdown, findScheduleSection } from './planner';
+import { fetchSchedule, injectSchedule, validateScheduleMarkdown, findScheduleSection, findPlanSection } from './planner';
 import { planMyDayDebugger } from './plan-my-day-debug';
 import { setApp } from './vault-utils';
 import { VaultManagementClient } from './vault-api-client';
@@ -483,11 +483,15 @@ export default class VaultPilotPlugin extends Plugin {
 
       console.log('📝 [Plan My Day] Injecting schedule into note...');
       
-      // Check if note already has a schedule section
-      const existingSection = findScheduleSection(fileText);
-      console.log('🔍 [Plan My Day] Existing schedule section:', {
-        found: !!existingSection,
-        heading: existingSection?.[1]?.substring(0, 50)
+      // Check if note already has a plan section (comment wrapper) or schedule section
+      const existingPlanSection = findPlanSection(fileText);
+      const existingScheduleSection = findScheduleSection(fileText);
+      
+      console.log('🔍 [Plan My Day] Existing sections:', {
+        hasPlanWrapper: !!existingPlanSection,
+        hasScheduleSection: !!existingScheduleSection,
+        planContent: existingPlanSection?.[2]?.substring(0, 50),
+        scheduleHeading: existingScheduleSection?.[1]?.substring(0, 50)
       });
 
       // Inject the schedule into the note

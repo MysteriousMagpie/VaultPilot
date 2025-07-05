@@ -1,12 +1,13 @@
 # Daily Note - 2025-06-28
 
+<!-- vp:plan:start -->
+<!-- This section will be populated by the Plan My Day command -->
+<!-- vp:plan:end -->
+
 ## Tasks
 - [ ] Review project requirements
 - [ ] Implement new feature
 - [ ] Write documentation
-
-## Schedule
-<!-- This section will be populated by the Plan My Day command -->
 
 ## Notes
 Today I need to focus on completing the planner integration.
