@@ -1,7 +1,8 @@
 import { Modal, App, Setting, Notice } from 'obsidian';
 import type VaultPilotPlugin from './main';
-import { ChatMessage, Intent } from './types';
+import { ChatMessage, Intent, StreamMessage } from './types';
 import { getActiveMarkdown } from './vault-utils';
+import { DevelopmentContextService } from './services/DevelopmentContextService';
 
 export class ChatModal extends Modal {
   plugin: VaultPilotPlugin;
@@ -12,10 +13,12 @@ export class ChatModal extends Modal {
   private sendButton!: HTMLButtonElement;
   private currentConversationId: string | null = null;
   private messages: ChatMessage[] = [];
+  private contextService: DevelopmentContextService;
 
   constructor(app: App, plugin: VaultPilotPlugin) {
     super(app);
     this.plugin = plugin;
+    this.contextService = new DevelopmentContextService(app, plugin);
   }
 
   onOpen() {
@@ -33,6 +36,12 @@ export class ChatModal extends Modal {
     const autoModeInfo = toolbarEl.createEl('div', { 
       cls: 'vaultpilot-auto-mode-info',
       text: '⚡ Automatic mode detection enabled'
+    });
+    
+    // Add context indicator
+    const contextInfo = toolbarEl.createEl('div', { 
+      cls: 'vaultpilot-context-info',
+      text: '🧠 Smart context enabled'
     });
     
     // Clear chat button
@@ -169,13 +178,28 @@ export class ChatModal extends Modal {
 
     try {
       // ── fetch context & intent in parallel ──────────────────────────────
-      const [context, intentRes] = await Promise.all([
+      const [markdownContext, intentRes, devContext] = await Promise.all([
         getActiveMarkdown(),          // returns string | null
-        this.plugin.apiClient.classifyIntent(message)  // POST /intelligence/parse
+        this.plugin.apiClient.classifyIntent(message),  // POST /intelligence/parse
+        this.contextService.getFullContext() // Get comprehensive development context
       ]);
 
-      // build a generic payload; context may be null/empty
-      const payload = { message, context };
+      // Build context summary including both markdown and development context
+      const contextSummary = await this.contextService.getContextSummary();
+      
+      // Combine contexts for enhanced AI understanding
+      let fullContext = '';
+      if (markdownContext) {
+        fullContext += `## Active File Content\n${markdownContext}\n\n`;
+      }
+      fullContext += contextSummary;
+
+      // build a generic payload with enhanced context
+      const payload = { 
+        message, 
+        context: fullContext,
+        development_context: devContext // Add structured context for advanced processing
+      };
 
       // Show intent detection in UI if debug mode is enabled
       if (this.plugin.settings.showIntentDebug) {
@@ -192,27 +216,24 @@ export class ChatModal extends Modal {
         } else {
           this.addMessage('assistant', `Error in agent mode: ${response.error || 'Failed to get response'}`);
         }
-      } else {
-        response = await this.plugin.apiClient.sendChat(payload, {
-          conversation_id: this.currentConversationId || undefined,
-          agent_id: this.getSelectedAgent()
-        });        // POST /chat
         
-        if (response.success && response.data) {
-          this.currentConversationId = response.data.conversation_id;
-          this.addMessage('assistant', response.data.response);
-        } else {
-          this.addMessage('assistant', `Error: ${response.error || 'Failed to get response'}`);
+        if (!response.success) {
+          new Notice(`Chat error: ${response.error}`);
         }
+      } else {
+        // Use streaming for chat responses
+        await this.handleStreamingResponse(payload);
       }
 
-      // Warn user if they had context disabled
-      if (!context?.length) {
+      // Show context info to user
+      if (fullContext.length > 0) {
+        let contextInfo = `📊 Context included: ${devContext.project.type} project, ${devContext.workspace.totalFiles} files`;
+        if (devContext.activeFile) {
+          contextInfo += `, active file: ${devContext.activeFile.name}`;
+        }
+        new Notice(contextInfo, 3000);
+      } else {
         new Notice("⚠️ No vault content was sent; replies may be generic.");
-      }
-
-      if (!response.success) {
-        new Notice(`Chat error: ${response.error}`);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -224,6 +245,128 @@ export class ChatModal extends Modal {
       this.sendButton.disabled = false;
       this.sendButton.textContent = 'Send';
       this.inputEl.focus();
+    }
+  }
+
+  private async handleStreamingResponse(payload: { message: string; context: string; development_context?: any }) {
+    try {
+      // Create a streaming message placeholder
+      const streamingMessageEl = this.addStreamingMessage('assistant');
+      
+      // Start the stream
+      const stream = await this.plugin.apiClient.streamChat({
+        message: payload.message,
+        context: payload.context,
+        conversation_id: this.currentConversationId || undefined,
+        agent_id: this.getSelectedAgent(),
+        development_context: payload.development_context
+      });
+
+      await this.processStreamingResponse(stream, streamingMessageEl);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.addMessage('assistant', `Error: ${errorMsg}`);
+      new Notice(`Streaming error: ${errorMsg}`);
+    }
+  }
+
+  private addStreamingMessage(role: 'user' | 'assistant'): HTMLElement {
+    const messageEl = this.messagesEl.createEl('div', {
+      cls: `vaultpilot-message vaultpilot-message-${role} vaultpilot-message-streaming`
+    });
+
+    const roleEl = messageEl.createEl('div', {
+      cls: 'vaultpilot-message-role',
+      text: role === 'user' ? 'You' : 'VaultPilot'
+    });
+
+    const contentEl = messageEl.createEl('div', {
+      cls: 'vaultpilot-message-content'
+    });
+
+    // Add typing indicator
+    const typingEl = contentEl.createEl('div', {
+      cls: 'vaultpilot-typing-indicator',
+      text: 'typing...'
+    });
+
+    const timeEl = messageEl.createEl('div', {
+      cls: 'vaultpilot-message-time',
+      text: new Date().toLocaleTimeString()
+    });
+
+    this.scrollToBottom();
+    return messageEl;
+  }
+
+  private async processStreamingResponse(stream: ReadableStream, messageEl: HTMLElement) {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    const contentEl = messageEl.querySelector('.vaultpilot-message-content') as HTMLElement;
+    
+    // Remove typing indicator
+    const typingEl = contentEl.querySelector('.vaultpilot-typing-indicator');
+    if (typingEl) {
+      typingEl.remove();
+    }
+
+    let accumulatedContent = '';
+    
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) {
+          break;
+        }
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.substring(6)) as StreamMessage;
+              
+              if (data.type === 'chunk' && data.content) {
+                accumulatedContent += data.content;
+                contentEl.innerHTML = this.renderMarkdown(accumulatedContent);
+                this.scrollToBottom();
+              } else if (data.type === 'complete') {
+                // Update conversation ID if provided
+                if (data.conversation_id) {
+                  this.currentConversationId = data.conversation_id;
+                }
+                // Mark message as complete
+                messageEl.removeClass('vaultpilot-message-streaming');
+                break;
+              } else if (data.type === 'error') {
+                accumulatedContent += `\n\nError: ${data.error}`;
+                contentEl.innerHTML = this.renderMarkdown(accumulatedContent);
+                messageEl.removeClass('vaultpilot-message-streaming');
+                break;
+              }
+            } catch (parseError) {
+              console.warn('Failed to parse streaming chunk:', parseError);
+            }
+          }
+        }
+      }
+      
+      // Add to messages array
+      const message: ChatMessage = {
+        role: 'assistant',
+        content: accumulatedContent,
+        timestamp: new Date().toISOString()
+      };
+      this.messages.push(message);
+      
+    } catch (error) {
+      console.error('Streaming error:', error);
+      contentEl.innerHTML = this.renderMarkdown(`Error during streaming: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      reader.releaseLock();
+      messageEl.removeClass('vaultpilot-message-streaming');
     }
   }
 
@@ -378,6 +521,20 @@ export class ChatModal extends Modal {
           color: var(--text-muted);
           margin-top: 5px;
         }
+        .vaultpilot-message-streaming {
+          border-left: 3px solid var(--color-accent);
+          animation: pulse 2s infinite;
+        }
+        .vaultpilot-typing-indicator {
+          color: var(--text-muted);
+          font-style: italic;
+          animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.5; }
+          100% { opacity: 1; }
+        }
         .vaultpilot-chat-input-container {
           display: flex;
           gap: 10px;
@@ -426,6 +583,37 @@ export class ChatModal extends Modal {
     setTimeout(() => {
       debugEl.remove();
     }, 3000);
+  }
+
+  // Add a method to show context details
+  private async showContextDetails() {
+    try {
+      const context = await this.contextService.getFullContext();
+      const summary = await this.contextService.getContextSummary();
+      
+      // Create a modal or notice with context details
+      const contextModal = new Modal(this.app);
+      contextModal.titleEl.setText('Development Context Details');
+      
+      const { contentEl } = contextModal;
+      contentEl.empty();
+      contentEl.addClass('vaultpilot-context-details');
+      
+      // Add context summary
+      const summaryEl = contentEl.createEl('div', { cls: 'context-summary' });
+      summaryEl.createEl('pre', { text: summary });
+      
+      // Add detailed context (collapsed by default)
+      const detailsEl = contentEl.createEl('details');
+      detailsEl.createEl('summary', { text: 'Full Context Data (JSON)' });
+      const jsonEl = detailsEl.createEl('pre', { cls: 'context-json' });
+      jsonEl.textContent = JSON.stringify(context, null, 2);
+      
+      contextModal.open();
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      new Notice(`Error loading context: ${errorMsg}`);
+    }
   }
 
   onClose() {

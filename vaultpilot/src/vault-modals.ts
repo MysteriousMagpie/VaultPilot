@@ -60,14 +60,27 @@ export class VaultStructureModal extends Modal {
         this.onOpen();
       };
     } catch (error: any) {
-      loadingEl.setText('❌ Failed to load vault structure');
-      console.error(error);
+      loadingEl.remove();
+      console.error('Vault structure error:', error);
       
-      const retryButton = contentEl.createEl('button', { 
-        text: 'Retry',
-        cls: 'mod-cta'
-      });
-      retryButton.onclick = () => this.onOpen();
+      if (error.message?.includes('Not Found') || error.message?.includes('404')) {
+        // Server doesn't have vault management - show fallback
+        this.renderFallbackStructure(contentEl);
+      } else {
+        // Other error - show retry option
+        const errorEl = contentEl.createDiv({ cls: 'vault-error' });
+        errorEl.setText('❌ Failed to load vault structure');
+        
+        const retryButton = contentEl.createEl('button', { 
+          text: 'Retry',
+          cls: 'mod-cta'
+        });
+        retryButton.onclick = () => this.onOpen();
+      }
+      
+      refreshButton.onclick = () => {
+        this.onOpen();
+      };
     }
   }
 
@@ -176,6 +189,77 @@ export class VaultStructureModal extends Modal {
         `;
       }
     });
+  }
+
+  private renderFallbackStructure(container: HTMLElement) {
+    // Local vault analysis when server endpoints aren't available
+    const fallbackEl = container.createDiv({ cls: 'vault-fallback' });
+    fallbackEl.createEl('h3', { text: '📁 Local Vault Analysis' });
+    fallbackEl.createEl('p', { 
+      text: 'Server-side vault management not available. Showing local analysis.',
+      cls: 'vault-fallback-message'
+    });
+
+    // Get local statistics
+    const files = this.plugin.app.vault.getFiles();
+    const markdownFiles = this.plugin.app.vault.getMarkdownFiles();
+    const folders = this.plugin.app.vault.getAllLoadedFiles().filter((f: any) => f.children).length;
+
+    // Stats overview
+    const statsEl = fallbackEl.createDiv({ cls: 'vault-stats' });
+    statsEl.innerHTML = `
+      <div class="stat-grid">
+        <div class="stat-item">
+          <span class="stat-icon">📁</span>
+          <span class="stat-label">Folders</span>
+          <span class="stat-value">${folders}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-icon">📄</span>
+          <span class="stat-label">Total Files</span>
+          <span class="stat-value">${files.length}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-icon">📝</span>
+          <span class="stat-label">Markdown</span>
+          <span class="stat-value">${markdownFiles.length}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-icon">💾</span>
+          <span class="stat-label">Status</span>
+          <span class="stat-value">Local Only</span>
+        </div>
+      </div>
+    `;
+
+    // Recent files
+    const recentEl = fallbackEl.createDiv({ cls: 'recent-files-container' });
+    recentEl.createEl('h3', { text: 'Recent Files' });
+    
+    const recentFiles = markdownFiles
+      .sort((a: any, b: any) => b.stat.mtime - a.stat.mtime)
+      .slice(0, 10);
+
+    const recentList = recentEl.createDiv({ cls: 'recent-files' });
+    recentFiles.forEach((file: any) => {
+      const fileEl = recentList.createDiv({ cls: 'recent-file' });
+      fileEl.innerHTML = `
+        <span class="file-icon">📄</span>
+        <span class="file-name">${file.basename}</span>
+        <span class="file-date">${new Date(file.stat.mtime).toLocaleDateString()}</span>
+      `;
+      fileEl.onclick = () => {
+        this.plugin.app.workspace.openLinkText(file.path, '', false);
+        this.close();
+      };
+    });
+
+    // Configuration note
+    const configEl = fallbackEl.createDiv({ cls: 'vault-config-note' });
+    configEl.innerHTML = `
+      <p><strong>💡 Enable Full Features:</strong> Configure vault management endpoints on your server to access advanced features like structure analysis, smart search, and file operations.</p>
+      <p>See the dev-pipe documentation for implementation details.</p>
+    `;
   }
 
   onClose() {

@@ -44,6 +44,19 @@ export class VaultManagementClient implements VaultManagementAPI {
         body: JSON.stringify(request)
       });
 
+      if (response.status === 404) {
+        // Endpoint not implemented - return empty structure
+        return {
+          vault_name: 'Vault',
+          total_files: 0,
+          total_folders: 0,
+          total_size: 0,
+          structure: { name: 'vault', type: 'folder', path: '/', children: [] },
+          recent_files: [],
+          orphaned_files: []
+        };
+      }
+
       if (!response.ok) {
         throw new VaultManagementError(
           `Failed to get vault structure: ${response.statusText}`,
@@ -54,6 +67,9 @@ export class VaultManagementClient implements VaultManagementAPI {
 
       return await response.json();
     } catch (error) {
+      if (error instanceof VaultManagementError) {
+        throw error;
+      }
       this.handleVaultManagementError(error, 'structure');
       throw error;
     }

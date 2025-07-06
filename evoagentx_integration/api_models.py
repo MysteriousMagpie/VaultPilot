@@ -5,7 +5,7 @@ This file contains all Pydantic models for VaultPilot API endpoints.
 These models ensure type safety and automatic API documentation.
 """
 
-from typing import List, Optional, Dict, Any, Union, Literal
+from typing import List, Optional, Dict, Any, Union, Literal, Generator
 from pydantic import BaseModel, Field
 from datetime import datetime
 import uuid
@@ -346,3 +346,32 @@ class ValidationErrorResponse(BaseModel):
     validation_errors: List[ValidationError] = Field(..., description="Detailed validation errors")
     url: str = Field(..., description="Request URL")
     method: str = Field(..., description="HTTP method")
+
+
+# Streaming Chat Models
+class ChatStreamRequest(BaseModel):
+    """Streaming chat request"""
+    message: str = Field(..., min_length=1, description="User message")
+    conversation_id: Optional[str] = Field(None, description="Conversation ID for continuation")
+    vault_context: Optional[str] = Field(None, description="Current vault content context")
+    agent_id: Optional[str] = Field(None, description="Specific agent to use")
+    stream: bool = Field(default=True, description="Enable streaming response")
+    stream_options: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Streaming configuration")
+
+
+class ChatStreamChunk(BaseModel):
+    """Individual streaming response chunk"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Chunk ID")
+    conversation_id: Optional[str] = Field(None, description="Conversation ID")
+    content: str = Field(..., description="Chunk content")
+    is_complete: bool = Field(default=False, description="Whether this is the final chunk")
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Chunk metadata")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Chunk timestamp")
+
+
+class StreamingResponse(BaseModel):
+    """Wrapper for streaming response metadata"""
+    stream_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Stream ID")
+    conversation_id: str = Field(..., description="Conversation ID")
+    total_chunks: Optional[int] = Field(None, description="Total expected chunks")
+    started_at: datetime = Field(default_factory=datetime.now, description="Stream start time")

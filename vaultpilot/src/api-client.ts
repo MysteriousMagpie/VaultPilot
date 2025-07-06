@@ -181,7 +181,7 @@ export class EvoAgentXClient {
       method: 'POST',
       body: JSON.stringify({
         goal: payload.message,
-        context: payload.context || undefined
+        context: payload.context ? { content: payload.context } : { content: "No specific context provided" }
       }),
     });
   }
@@ -197,6 +197,50 @@ export class EvoAgentXClient {
         mode: 'ask'
       }),
     });
+  }
+
+  // Streaming Chat functionality
+  async streamChat(payload: { 
+    message: string; 
+    context: string | null; 
+    conversation_id?: string; 
+    agent_id?: string;
+    development_context?: any;
+  }): Promise<ReadableStream> {
+    const url = `${this.baseUrl}/api/obsidian/chat/stream`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'text/plain',
+    };
+
+    if (this.apiKey) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        message: payload.message,
+        vault_context: payload.context || undefined,
+        conversation_id: payload.conversation_id,
+        agent_id: payload.agent_id,
+        development_context: payload.development_context,
+        stream: true
+      }),
+      mode: 'cors',
+      credentials: 'omit'
+    });
+
+    if (!response.ok) {
+      throw new Error(`Stream request failed: ${response.status} ${response.statusText}`);
+    }
+
+    if (!response.body) {
+      throw new Error('Response body is null');
+    }
+
+    return response.body;
   }
 
   // Agent management

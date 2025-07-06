@@ -54,6 +54,38 @@ export interface ChatResponse {
   agent_used: string;
 }
 
+// Streaming Chat Types
+export interface ChatStreamRequest {
+  message: string;
+  conversation_id?: string;
+  vault_context?: string;
+  context?: string; // Alias for backward compatibility
+  agent_id?: string;
+  stream?: boolean;
+  stream_options?: Record<string, any>;
+  development_context?: any; // Development context from DevelopmentContextService
+}
+
+export interface ChatStreamChunk {
+  id: string;
+  conversation_id?: string;
+  content: string;
+  is_complete: boolean;
+  metadata?: Record<string, any>;
+  timestamp: string;
+}
+
+export interface StreamMessage {
+  type: 'start' | 'chunk' | 'complete' | 'error';
+  stream_id?: string;
+  conversation_id?: string;
+  content?: string;
+  is_complete?: boolean;
+  metadata?: Record<string, any>;
+  error?: string;
+  timestamp: string;
+}
+
 export interface ConversationHistory {
   conversation_id: string;
   messages: ChatMessage[];

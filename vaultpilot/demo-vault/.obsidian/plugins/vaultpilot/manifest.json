@@ -7,5 +7,5 @@
   "author": "VaultPilot Team",
   "authorUrl": "https://github.com/malachiledbetter/VaultPilot",
   "isDesktopOnly": false,
-  "main": "dist/main.js"
+  "main": "main.js"
 }

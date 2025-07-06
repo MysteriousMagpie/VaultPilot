@@ -726,9 +726,41 @@ export default class VaultPilotPlugin extends Plugin {
       this.settings.apiKey
     );
     
+    // Check if vault management endpoints are available
+    this.checkVaultManagementAvailability();
+    
     if (this.settings.debugMode) {
       console.log('Vault management initialized');
     }
+  }
+
+  async checkVaultManagementAvailability() {
+    try {
+      // Try a simple test call to see if vault endpoints exist
+      const response = await fetch(`${this.settings.backendUrl}/api/obsidian/vault/structure`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.settings.apiKey && { 'Authorization': `Bearer ${this.settings.apiKey}` })
+        },
+        body: JSON.stringify({ include_content: false, max_depth: 1 })
+      });
+
+      if (response.status === 404) {
+        // Endpoint doesn't exist - disable vault management
+        this.disableVaultManagement();
+        if (this.settings.debugMode) {
+          console.log('VaultPilot: Vault management endpoints not available, disabling features');
+        }
+        return false;
+      }
+    } catch (error) {
+      // Network error or other issue - keep vault management but log warning
+      if (this.settings.debugMode) {
+        console.log('VaultPilot: Could not check vault management availability:', error);
+      }
+    }
+    return true;
   }
 
   disableVaultManagement() {

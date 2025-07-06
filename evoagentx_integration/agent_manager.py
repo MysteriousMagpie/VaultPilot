@@ -7,12 +7,13 @@ for the VaultPilot integration with EvoAgentX.
 
 import uuid
 import json
+import asyncio
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from .api_models import (
     Agent, AgentCreateRequest, AgentExecuteRequest, 
-    APIResponse, ChatRequest, ChatResponse
+    APIResponse, ChatRequest, ChatResponse, ChatStreamRequest, ChatStreamChunk
 )
 
 
@@ -444,13 +445,97 @@ class AgentManager:
             return ChatResponse(
                 response=response_text,
                 conversation_id=request.conversation_id or str(uuid.uuid4()),
-                agent_name=agent.name
+                agent_used=agent.name,
+                metadata={"agent_id": agent.id}
             )
         except Exception as e:
             return ChatResponse(
                 response=f"Sorry, I encountered an error: {str(e)}",
                 conversation_id=request.conversation_id or str(uuid.uuid4()),
-                agent_name="System"
+                agent_used="System",
+                metadata={"error": True}
+            )
+
+    async def process_chat_stream(self, request: ChatStreamRequest, conversation_id: str):
+        """Process a streaming chat request with an agent"""
+        try:
+            # Auto-select agent if not specified
+            if request.agent_id:
+                agent = await self.get_agent(request.agent_id)
+                if not agent:
+                    raise ValueError(f"Agent {request.agent_id} not found")
+            else:
+                # Auto-select the best agent for this task
+                agent = await self.auto_select_agent(request.message, request.vault_context)
+                if not agent:
+                    # Default to the first available agent
+                    agents = await self.get_all_agents()
+                    agent = agents[0] if agents else None
+                    
+            if not agent:
+                raise ValueError("No agents available")
+            
+            # Generate streaming response
+            async for chunk in self._generate_agent_response_stream(agent, request, conversation_id):
+                yield chunk
+                
+        except Exception as e:
+            # Yield error chunk
+            yield ChatStreamChunk(
+                conversation_id=conversation_id,
+                content=f"Sorry, I encountered an error: {str(e)}",
+                is_complete=True,
+                metadata={"error": True, "agent_name": "System"}
+            )
+
+    async def _generate_agent_response_stream(self, agent: Agent, request: ChatStreamRequest, conversation_id: str):
+        """Generate streaming response chunks"""
+        try:
+            # Convert to ChatRequest for existing method
+            chat_request = ChatRequest(
+                message=request.message,
+                conversation_id=conversation_id,
+                vault_context=request.vault_context,
+                agent_id=request.agent_id
+            )
+            
+            # This is a simple mock implementation - replace with actual AI generation
+            full_response = await self._generate_agent_response(agent, chat_request)
+            
+            # Split response into chunks for streaming
+            words = full_response.split()
+            chunk_size = max(1, len(words) // 20)  # Aim for ~20 chunks
+            
+            for i in range(0, len(words), chunk_size):
+                chunk_words = words[i:i + chunk_size]
+                chunk_content = " ".join(chunk_words)
+                
+                # Add space if not the first chunk
+                if i > 0:
+                    chunk_content = " " + chunk_content
+                
+                is_complete = (i + chunk_size) >= len(words)
+                
+                yield ChatStreamChunk(
+                    conversation_id=conversation_id,
+                    content=chunk_content,
+                    is_complete=is_complete,
+                    metadata={
+                        "agent_name": agent.name,
+                        "chunk_index": i // chunk_size,
+                        "total_words": len(words)
+                    }
+                )
+                
+                # Small delay to simulate natural streaming
+                await asyncio.sleep(0.05)
+                
+        except Exception as e:
+            yield ChatStreamChunk(
+                conversation_id=conversation_id,
+                content=f"Error generating response: {str(e)}",
+                is_complete=True,
+                metadata={"error": True, "agent_name": agent.name if agent else "System"}
             )
 
     async def get_conversation_history(self, conversation_id: str) -> Optional[Dict[str, Any]]:
@@ -475,6 +560,7 @@ class AgentManager:
         # Convert to chat request for processing
         chat_request = ChatRequest(
             message=request.task,
+            conversation_id=None,
             agent_id=request.agent_id,
             vault_context=request.context
         )

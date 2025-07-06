@@ -6,6 +6,7 @@ import { Command, Notice, Editor } from 'obsidian';
 
 // Define a type for plugin instance with vault management methods
 interface VaultManagementPlugin {
+  app: any;
   vaultClient?: any;
   openVaultStructureModal?: () => void;
   openSmartSearchModal?: (query?: string, type?: string) => void;
@@ -221,7 +222,27 @@ export function createVaultManagementCommands(): Command[] {
           
         } catch (error: any) {
           console.error('Failed to get recent files:', error);
-          new Notice(`❌ Failed to get recent files: ${error.message}`, 5000);
+          
+          // Check if it's a "Not Found" error - provide fallback
+          if (error.message?.includes('Not Found') || error.message?.includes('404')) {
+            // Fallback to local recent files
+            const files = this.app.vault.getMarkdownFiles()
+              .sort((a: any, b: any) => b.stat.mtime - a.stat.mtime)
+              .slice(0, 10);
+            
+            if (files.length === 0) {
+              new Notice('No recent files found');
+              return;
+            }
+            
+            const recentList = files
+              .map((file: any) => `• ${file.basename} (${new Date(file.stat.mtime).toLocaleDateString()})`)
+              .join('\n');
+            
+            new Notice(`📝 Recent Files (Local):\n${recentList}`, 10000);
+          } else {
+            new Notice(`❌ Failed to get recent files: ${error.message}`, 5000);
+          }
         }
       }
     }

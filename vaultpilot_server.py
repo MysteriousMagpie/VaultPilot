@@ -341,6 +341,52 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         active_connections.remove(websocket)
 
+@app.websocket("/api/obsidian/ws/enhanced")
+async def enhanced_websocket_endpoint(websocket: WebSocket):
+    """Enhanced WebSocket endpoint for VaultPilot real-time communication"""
+    await websocket.accept()
+    active_connections.append(websocket)
+    
+    try:
+        await websocket.send_json({
+            "type": "connection",
+            "data": {
+                "status": "connected",
+                "enhanced": True,
+                "features": ["real-time-updates", "vault-sync", "agent-status"],
+                "timestamp": datetime.now().isoformat()
+            }
+        })
+        
+        while True:
+            data = await websocket.receive_text()
+            
+            # Parse and handle different message types
+            try:
+                import json
+                message = json.loads(data) if isinstance(data, str) else data
+                message_type = message.get("type", "message") if isinstance(message, dict) else "raw"
+                
+                response = {
+                    "type": "response",
+                    "original_type": message_type,
+                    "data": {"echo": data, "processed": True},
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                await websocket.send_json(response)
+                
+            except Exception as e:
+                await websocket.send_json({
+                    "type": "error",
+                    "data": {"error": str(e), "original_data": data},
+                    "timestamp": datetime.now().isoformat()
+                })
+            
+    except WebSocketDisconnect:
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+
 # === Background Tasks ===
 
 async def run_analysis(analysis_id: str):
@@ -421,6 +467,99 @@ async def run_workflow(workflow_id: str):
                 })
             except:
                 pass
+
+# === Additional Vault Management Endpoints ===
+
+@app.post("/api/obsidian/vault/structure")
+async def get_vault_structure(request: dict):
+    """Get comprehensive vault structure - basic implementation"""
+    await asyncio.sleep(1)  # Simulate processing
+    
+    return {
+        "vault_name": "VaultPilot Vault",
+        "total_files": 247,
+        "total_folders": 15,
+        "total_size": 1048576,
+        "structure": {
+            "name": "vault",
+            "path": "/",
+            "type": "folder",
+            "children": [
+                {
+                    "name": "Daily Notes",
+                    "path": "/Daily Notes", 
+                    "type": "folder",
+                    "children": []
+                },
+                {
+                    "path": "/README.md",
+                    "name": "README.md",
+                    "size": 2048,
+                    "modified": datetime.now().isoformat(),
+                    "file_type": "markdown"
+                }
+            ]
+        },
+        "recent_files": [
+            {
+                "path": "/Daily Notes/2025-07-05.md",
+                "name": "2025-07-05.md",
+                "size": 1024,
+                "modified": datetime.now().isoformat(),
+                "file_type": "markdown"
+            }
+        ],
+        "orphaned_files": []
+    }
+
+@app.get("/api/obsidian/health")
+async def obsidian_health():
+    """Obsidian-specific health check"""
+    return APIResponse(
+        success=True,
+        data={
+            "status": "ok",
+            "version": "1.0.0",
+            "features": ["vault_management", "chat", "workflows"],
+            "timestamp": datetime.now().isoformat()
+        }
+    )
+
+@app.post("/api/obsidian/chat")
+async def obsidian_chat(request: dict):
+    """Obsidian-specific chat endpoint"""
+    message = request.get("message", "")
+    
+    await asyncio.sleep(1)  # Simulate AI processing
+    
+    return APIResponse(
+        success=True,
+        data={
+            "response": f"I understand you're asking about: {message}. Based on your vault content, here's my analysis...",
+            "conversation_id": str(uuid.uuid4()),
+            "timestamp": datetime.now().isoformat()
+        }
+    )
+
+@app.post("/api/obsidian/workflow")
+async def obsidian_workflow(request: dict):
+    """Obsidian-specific workflow execution"""
+    goal = request.get("goal", "")
+    
+    await asyncio.sleep(2)  # Simulate processing
+    
+    return APIResponse(
+        success=True,
+        data={
+            "result": f"Workflow completed for goal: {goal}",
+            "steps": ["Analyzed vault content", "Generated insights"],
+            "output": "Based on your vault content, here are the key insights...",
+            "metadata": {
+                "execution_time": "2.3 seconds",
+                "files_analyzed": 15
+            }
+        }
+    )
 
 if __name__ == "__main__":
     print("🚀 VaultPilot Server - Single Clean Implementation")

@@ -5,10 +5,12 @@ This file contains all the FastAPI route implementations for VaultPilot endpoint
 Copy this to your EvoAgentX project and customize the implementations.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from fastapi.responses import JSONResponse
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse, StreamingResponse
+from typing import List, Optional, Generator
 import uuid
+import json
+import asyncio
 from datetime import datetime
 
 # Import your models (adjust import path as needed)
@@ -59,6 +61,72 @@ async def chat_with_agent(request: ChatRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat processing failed: {str(e)}")
+
+
+@obsidian_router.post("/chat/stream")
+async def stream_chat_response(request: ChatStreamRequest):
+    """
+    Streaming chat endpoint for real-time responses
+    
+    Provides Server-Sent Events (SSE) streaming for conversational development
+    """
+    try:
+        # Generate conversation ID if not provided
+        conversation_id = request.conversation_id or str(uuid.uuid4())
+        
+        async def generate_stream():
+            try:
+                # Initialize streaming response
+                stream_id = str(uuid.uuid4())
+                
+                # Send initial metadata
+                yield f"data: {json.dumps({'type': 'start', 'stream_id': stream_id, 'conversation_id': conversation_id})}\n\n"
+                
+                # Generate AI response chunks
+                async for chunk in agent_manager.process_chat_stream(request, conversation_id):
+                    chunk_data = {
+                        'type': 'chunk',
+                        'id': str(uuid.uuid4()),
+                        'stream_id': stream_id,
+                        'conversation_id': conversation_id,
+                        'content': chunk.content,
+                        'is_complete': chunk.is_complete,
+                        'metadata': chunk.metadata,
+                        'timestamp': chunk.timestamp.isoformat()
+                    }
+                    yield f"data: {json.dumps(chunk_data)}\n\n"
+                    
+                    # Add small delay to simulate natural typing
+                    await asyncio.sleep(0.02)
+                    
+                    if chunk.is_complete:
+                        break
+                
+                # Send completion signal
+                yield f"data: {json.dumps({'type': 'complete', 'stream_id': stream_id})}\n\n"
+                
+            except Exception as e:
+                # Send error signal
+                error_data = {
+                    'type': 'error',
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat()
+                }
+                yield f"data: {json.dumps(error_data)}\n\n"
+        
+        return StreamingResponse(
+            generate_stream(), 
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*"
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Streaming failed: {str(e)}")
 
 
 @obsidian_router.post("/conversation/history", response_model=APIResponse)
@@ -276,6 +344,20 @@ async def update_memory(request: MemoryUpdateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Memory update failed: {str(e)}")
 
+
+@obsidian_router.websocket("/ws/enhanced")
+async def enhanced_websocket_endpoint(websocket: WebSocket, vault_id: str = "default"):
+    """
+    Enhanced WebSocket endpoint for VaultPilot real-time communication
+    
+    Provides real-time features like:
+    - Live chat updates
+    - Workflow progress notifications
+    - Vault synchronization events
+    - Agent status updates
+    """
+    from .websocket_handler import websocket_endpoint as ws_handler
+    await ws_handler(websocket, vault_id)
 
 # Error handlers - Add these to your main FastAPI app, not the router
 # @app.exception_handler(HTTPException)

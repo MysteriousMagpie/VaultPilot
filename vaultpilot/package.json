@@ -5,11 +5,12 @@
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rollup -c",
+    "build:clean": "rm -rf dist && npm run build",
     "test": "jest",
     "lint": "tsc --noEmit",
     "dev:watch": "concurrently \"npm run dev\" \"npm run copy:watch\"",
     "copy:watch": "nodemon --watch dist --ext js,json --exec \"npm run copy:demo\"",
-    "copy:demo": "mkdir -p demo-vault/.obsidian/plugins/vaultpilot && cp dist/main.js manifest.json demo-vault/.obsidian/plugins/vaultpilot/"
+    "copy:demo": "mkdir -p demo-vault/.obsidian/plugins/vaultpilot && cp dist/main.js demo-vault/.obsidian/plugins/vaultpilot/ && sed 's/\"dist\\/main\\.js\"/\"main.js\"/g' manifest.json > demo-vault/.obsidian/plugins/vaultpilot/manifest.json"
   },
   "keywords": [
     "obsidian",

@@ -6,9 +6,10 @@ const terser = require('@rollup/plugin-terser');
 module.exports = {
   input: 'src/main.ts',
   output: {
-    dir: 'dist',
+    file: 'dist/main.js',
     format: 'cjs',
     sourcemap: 'inline',
+    inlineDynamicImports: true,
   },
   external: ['obsidian'],
   plugins: [

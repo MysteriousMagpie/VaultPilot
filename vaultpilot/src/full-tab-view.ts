@@ -338,17 +338,137 @@ export class VaultPilotFullTabView extends ItemView {
       // Map workflow names to appropriate actions
       switch (workflowName) {
         case 'Analyze Vault':
-          await this.plugin.analyzeVault();
+          await this.runAnalyzeVaultWorkflow();
           break;
         case 'Daily Planning':
           await this.plugin.planMyDay();
           break;
+        case 'Generate Summary':
+          await this.runSummaryWorkflow();
+          break;
+        case 'Link Analysis':
+          await this.runLinkAnalysisWorkflow();
+          break;
+        case 'Content Search':
+          await this.runContentSearchWorkflow();
+          break;
         default:
-          // For now, show a placeholder
-          new Notice(`${workflowName} workflow is coming soon!`);
+          // For workflows that need server-side templates
+          await this.runGenericWorkflow(workflowName);
       }
-    } catch (error) {
-      new Notice(`Error running workflow: ${workflowName}`);
+    } catch (error: any) {
+      console.error(`Error running workflow: ${workflowName}:`, error);
+      if (error.message?.includes('Not Found') || error.message?.includes('404')) {
+        new Notice(`${workflowName} workflow requires server-side implementation. Please check server configuration.`);
+      } else {
+        new Notice(`Error running workflow: ${workflowName} - ${error.message}`);
+      }
+    }
+  }
+
+  private async runAnalyzeVaultWorkflow() {
+    if (this.plugin.vaultClient) {
+      try {
+        const structure = await this.plugin.vaultClient.getVaultStructure({
+          include_content: false,
+          max_depth: 3
+        });
+        new Notice(`Vault analysis complete! Found ${structure.total_files} files in ${structure.total_folders} folders.`);
+      } catch (error: any) {
+        if (error.message?.includes('Not Found')) {
+          // Fallback to local analysis
+          await this.runLocalVaultAnalysis();
+        } else {
+          throw error;
+        }
+      }
+    } else {
+      await this.runLocalVaultAnalysis();
+    }
+  }
+
+  private async runLocalVaultAnalysis() {
+    const files = this.app.vault.getFiles();
+    const markdownFiles = this.app.vault.getMarkdownFiles();
+    const folders = this.app.vault.getAllLoadedFiles().filter(f => f instanceof TFolder).length;
+    
+    new Notice(`Local vault analysis: ${markdownFiles.length} markdown files, ${files.length} total files, ${folders} folders.`);
+  }
+
+  private async runSummaryWorkflow() {
+    // Try to use existing workflow endpoint
+    try {
+      const activeFile = this.app.workspace.getActiveFile();
+      if (!activeFile) {
+        new Notice('Please open a file to summarize');
+        return;
+      }
+      
+      const content = await this.app.vault.read(activeFile);
+      const response = await this.plugin.apiClient.runWorkflow({
+        message: 'Please create a comprehensive summary of this content',
+        context: content
+      });
+      
+      if (response.success && response.data) {
+        new Notice('Summary generated successfully!');
+      } else {
+        throw new Error(response.error || 'Summary generation failed');
+      }
+    } catch (error: any) {
+      throw new Error(`Summary workflow failed: ${error.message}`);
+    }
+  }
+
+  private async runLinkAnalysisWorkflow() {
+    const markdownFiles = this.app.vault.getMarkdownFiles();
+    let totalLinks = 0;
+    let linkedFiles = new Set<string>();
+    
+    for (const file of markdownFiles) {
+      const content = await this.app.vault.read(file);
+      const linkMatches = content.match(/\[\[([^\]]+)\]\]/g);
+      if (linkMatches) {
+        totalLinks += linkMatches.length;
+        linkMatches.forEach(match => {
+          const linkTarget = match.slice(2, -2);
+          linkedFiles.add(linkTarget);
+        });
+      }
+    }
+    
+    const orphanedFiles = markdownFiles.length - linkedFiles.size;
+    new Notice(`Link analysis: ${totalLinks} total links, ${linkedFiles.size} linked files, ${orphanedFiles} orphaned files.`);
+  }
+
+  private async runContentSearchWorkflow() {
+    // Open the smart search modal if vault management is available
+    if (this.plugin.vaultClient && this.plugin.openSmartSearchModal) {
+      this.plugin.openSmartSearchModal('', 'comprehensive');
+    } else {
+      new Notice('Content search requires vault management features. Please enable in settings.');
+    }
+  }
+
+  private async runGenericWorkflow(workflowName: string) {
+    // For workflows that might need server-side templates
+    try {
+      const response = await this.plugin.apiClient.runWorkflow({
+        message: `Execute workflow: ${workflowName}`,
+        context: null
+      });
+      
+      if (response.success && response.data) {
+        new Notice(`${workflowName} completed successfully!`);
+      } else {
+        throw new Error(response.error || 'Workflow execution failed');
+      }
+    } catch (error: any) {
+      if (error.message?.includes('Not Found') || error.message?.includes('404')) {
+        new Notice(`${workflowName} workflow is not yet implemented on the server. Coming soon!`);
+      } else {
+        throw error;
+      }
     }
   }
 
