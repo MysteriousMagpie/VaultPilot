@@ -191,7 +191,8 @@ export class DevPipeClient {
 
   async disconnect(): Promise<void> {
     // Reject all pending requests
-    for (const [id, request] of this.pendingRequests) {
+    const pendingEntries = Array.from(this.pendingRequests.entries());
+    for (const [id, request] of pendingEntries) {
       window.clearTimeout(request.timeout);
       request.reject(new Error('DevPipe client disconnected'));
     }
