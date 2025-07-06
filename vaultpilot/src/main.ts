@@ -18,17 +18,27 @@ import {
   SmartSearchModal, 
   FileOperationsModal
 } from './vault-modals';
+import { Phase3Integration } from './components/Phase3Integration';
+// Enhanced UI Components
+import { VaultPilotEnhancementManager } from './vault-management/enhanced-ui-components';
+import { KeyboardShortcutHandler, EnhancedCommandsFactory } from './vault-management/enhanced-commands';
 
 export default class VaultPilotPlugin extends Plugin {
   settings!: VaultPilotSettings;
   apiClient!: EvoAgentXClient;
   vaultClient!: VaultManagementClient;
   modelSelectionService?: ModelSelectionService;
+  phase3Integration?: Phase3Integration;
+  enhancementManager?: VaultPilotEnhancementManager;
+  keyboardHandler?: KeyboardShortcutHandler;
   private websocketConnected = false;
   private copilotEnabled = false;
 
   async onload() {
     await this.loadSettings();
+
+    // Load enhanced UI styles
+    this.loadEnhancedUIStyles();
 
     // Initialize app instance for vault-utils
     setApp(this.app);
@@ -195,6 +205,12 @@ export default class VaultPilotPlugin extends Plugin {
     // Register vault management commands
     this.registerVaultManagementCommands();
 
+    // Initialize Phase 3 features
+    this.initializePhase3();
+
+    // Initialize Enhancement Manager and Keyboard Shortcuts
+    this.initializeEnhancementManager();
+
     // Register editor events for copilot
     if (this.settings.enableCopilot && this.settings.enableAutoComplete) {
       this.registerDomEvent(document, 'keyup', this.handleKeyUp.bind(this));
@@ -209,6 +225,8 @@ export default class VaultPilotPlugin extends Plugin {
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_VAULTPILOT_FULL_TAB);
     this.disconnectWebSocket();
     await this.disconnectModelSelection();
+    this.disablePhase3();
+    this.disableEnhancementManager();
   }
 
   // WebSocket Management
@@ -771,6 +789,116 @@ export default class VaultPilotPlugin extends Plugin {
 
   // === END VAULT MANAGEMENT METHODS ===
 
+  // === PHASE 3 INTEGRATION ===
+
+  initializePhase3() {
+    // For now, always initialize Phase 3 features
+    try {
+      this.phase3Integration = new Phase3Integration(this, {
+        autoShowOnboarding: !this.settings.onboardingComplete
+      });
+      
+      // Load the Phase 3 integration
+      this.phase3Integration.onload();
+      
+      if (this.settings.debugMode) {
+        console.log('Phase 3 features initialized successfully');
+      }
+
+      // Show onboarding for first-time users
+      if (!this.settings.onboardingComplete) {
+        // Delay onboarding slightly to let plugin fully load
+        setTimeout(() => {
+          this.phase3Integration?.showOnboardingIfNeeded();
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Failed to initialize Phase 3 features:', error);
+      if (this.settings.debugMode) {
+        new Notice('Phase 3 features failed to initialize - check console for details', 5000);
+      }
+    }
+  }
+
+  disablePhase3() {
+    if (this.phase3Integration) {
+      this.phase3Integration.onunload();
+      this.phase3Integration = undefined;
+    }
+    if (this.settings.debugMode) {
+      console.log('Phase 3 features disabled');
+    }
+  }
+
+  // === END PHASE 3 INTEGRATION ===
+
+  // === ENHANCEMENT MANAGER INTEGRATION ===
+
+  initializeEnhancementManager() {
+    try {
+      // Initialize Enhancement Manager
+      this.enhancementManager = new VaultPilotEnhancementManager(this);
+      
+      // Initialize the enhancement manager
+      this.enhancementManager.initialize().then(() => {
+        if (this.settings.debugMode) {
+          console.log('VaultPilot Enhancement Manager initialized successfully');
+        }
+      }).catch(error => {
+        console.error('Failed to initialize Enhancement Manager:', error);
+      });
+
+      // Initialize Keyboard Shortcut Handler
+      this.keyboardHandler = new KeyboardShortcutHandler(this);
+      
+      // Register global keyboard event listener
+      this.registerDomEvent(document, 'keydown', (event: KeyboardEvent) => {
+        if (this.keyboardHandler?.handleKeyDown(event)) {
+          // Event was handled by keyboard shortcuts
+          return;
+        }
+      });
+
+      // Register enhanced commands
+      const enhancedCommands = EnhancedCommandsFactory.createEnhancedCommands(this);
+      enhancedCommands.forEach(command => {
+        this.addCommand({
+          id: command.id,
+          name: command.name,
+          callback: command.callback,
+          editorCallback: command.editorCallback,
+          checkCallback: command.checkCallback
+        });
+      });
+
+      if (this.settings.debugMode) {
+        console.log('Keyboard shortcuts and enhanced commands initialized');
+      }
+    } catch (error) {
+      console.error('Failed to initialize Enhancement Manager:', error);
+      if (this.settings.debugMode) {
+        new Notice('Enhancement features failed to initialize - check console for details', 5000);
+      }
+    }
+  }
+
+  disableEnhancementManager() {
+    if (this.enhancementManager) {
+      this.enhancementManager.unload();
+      this.enhancementManager = undefined;
+    }
+    
+    if (this.keyboardHandler) {
+      this.keyboardHandler = undefined;
+    }
+
+    if (this.settings.debugMode) {
+      console.log('Enhancement Manager disabled');
+    }
+  }
+
+  // === END ENHANCEMENT MANAGER INTEGRATION ===
+
   // Auto-completion handling
   private handleKeyUp(event: KeyboardEvent) {
     if (!this.settings.enableAutoComplete || !this.settings.enableCopilot) return;
@@ -1210,5 +1338,66 @@ export default class VaultPilotPlugin extends Plugin {
     }
     
     return null;
+  }
+
+  // === ENHANCED UI STYLES ===
+
+  private loadEnhancedUIStyles() {
+    // Load enhanced UI styles for progress indicators and keyboard shortcuts
+    const styleId = 'vaultpilot-enhanced-ui-styles';
+    
+    // Remove existing styles if they exist
+    const existingStyle = document.getElementById(styleId);
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+
+    // Create new style element
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      /* VaultPilot Enhanced UI Styles */
+      @import url("app://obsidian.md/vault-management/enhanced-ui-styles.css");
+      
+      /* Fallback styles in case import fails */
+      .vaultpilot-progress-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        pointer-events: none;
+        max-width: 400px;
+        font-family: var(--font-interface);
+      }
+      
+      .vaultpilot-progress-item {
+        background: var(--background-primary);
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        min-width: 300px;
+        pointer-events: auto;
+        animation: slideInRight 0.3s ease-out;
+      }
+      
+      @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      
+      @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    
+    // Add to document head
+    document.head.appendChild(style);
+    
+    if (this.settings.debugMode) {
+      console.log('Enhanced UI styles loaded');
+    }
   }
 }

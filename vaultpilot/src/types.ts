@@ -246,6 +246,16 @@ export interface VaultPilotSettings {
   showIntentDebug: boolean;
   vaultManagement?: VaultManagementSettings;
   modelSelection?: ModelSelectionSettings;
+  
+  // Phase 3 Settings
+  onboardingComplete?: boolean;
+  performanceMode?: 'performance' | 'balanced' | 'reliability';
+  enableRealTimeUpdates?: boolean;
+  enableAnalytics?: boolean;
+  webSocketUrl?: string;
+  transportConfig?: any;
+  advancedConfiguration?: any;
+  configurationProfiles?: any[];
 }
 
 export interface ModelSelectionSettings {
