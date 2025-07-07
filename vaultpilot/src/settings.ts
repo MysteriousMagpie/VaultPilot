@@ -30,6 +30,21 @@ export const DEFAULT_SETTINGS: VaultPilotSettings = {
       preferredProviders: [],
       qualityThreshold: 0.7
     }
+  },
+  // Phase 3 Settings
+  onboardingComplete: false,
+  performanceMode: 'balanced',
+  enableRealTimeUpdates: true,
+  enableAnalytics: true,
+  // Workspace Manager Settings
+  workspaceManager: {
+    enabled: true,
+    autoSwitchMode: false,
+    defaultMode: 'chat',
+    panelSizes: {
+      context: 300,
+      ai: 300
+    }
   }
 };
 

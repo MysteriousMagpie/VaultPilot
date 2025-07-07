@@ -6,7 +6,8 @@ Copy this to your EvoAgentX project and customize the implementations.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse as FastAPIStreamingResponse
 from typing import List, Optional, Generator
 import uuid
 import json
@@ -114,7 +115,7 @@ async def stream_chat_response(request: ChatStreamRequest):
                 }
                 yield f"data: {json.dumps(error_data)}\n\n"
         
-        return StreamingResponse(
+        return FastAPIStreamingResponse(
             generate_stream(), 
             media_type="text/plain",
             headers={

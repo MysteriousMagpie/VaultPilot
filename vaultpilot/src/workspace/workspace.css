@@ -1,0 +1,593 @@
+/**
+ * VaultPilot Workspace Styles
+ * 
+ * Complete styling for the unified 3-panel workspace architecture,
+ * including responsive design, accessibility features, and smooth animations.
+ */
+
+/* ==========================================================================
+   Workspace Container
+   ========================================================================== */
+
+.vp-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  background: var(--vp-color-bg-primary);
+  font-family: var(--vp-font-family-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Command Bar
+   ========================================================================== */
+
+.vp-command-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 var(--vp-space-lg);
+  background: var(--vp-color-bg-secondary);
+  border-bottom: 1px solid var(--vp-color-border-primary);
+  z-index: 100;
+}
+
+.vp-mode-switcher {
+  display: flex;
+  gap: var(--vp-space-xs);
+}
+
+.vp-mode-button {
+  display: flex;
+  align-items: center;
+  gap: var(--vp-space-xs);
+  padding: var(--vp-space-xs) var(--vp-space-md);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--vp-radius-md);
+  color: var(--vp-color-text-secondary);
+  font-size: var(--vp-font-size-sm);
+  font-weight: var(--vp-font-weight-medium);
+  cursor: pointer;
+  transition: all var(--vp-transition-fast);
+  position: relative;
+}
+
+.vp-mode-button:hover {
+  background: var(--vp-color-bg-hover);
+  color: var(--vp-color-text-primary);
+}
+
+.vp-mode-button:focus-visible {
+  outline: 2px solid var(--vp-color-primary);
+  outline-offset: 2px;
+}
+
+.vp-mode-button.vp-mode-active {
+  background: var(--vp-color-primary);
+  color: var(--vp-color-text-inverse);
+  border-color: var(--vp-color-primary);
+}
+
+.vp-mode-button.vp-mode-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid var(--vp-color-bg-secondary);
+}
+
+.vp-action-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--vp-space-lg);
+}
+
+.vp-search-container {
+  position: relative;
+}
+
+.vp-global-search {
+  width: 240px;
+  padding: var(--vp-space-xs) var(--vp-space-md);
+  background: var(--vp-color-bg-primary);
+  border: 1px solid var(--vp-color-border-primary);
+  border-radius: var(--vp-radius-md);
+  color: var(--vp-color-text-primary);
+  font-size: var(--vp-font-size-sm);
+  transition: border-color var(--vp-transition-fast);
+}
+
+.vp-global-search:focus {
+  outline: none;
+  border-color: var(--vp-color-primary);
+  box-shadow: 0 0 0 1px var(--vp-color-primary);
+}
+
+.vp-global-search::placeholder {
+  color: var(--vp-color-text-tertiary);
+}
+
+.vp-user-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--vp-space-md);
+}
+
+.vp-panel-toggles {
+  display: flex;
+  gap: var(--vp-space-xs);
+}
+
+.vp-panel-toggle {
+  padding: var(--vp-space-xs) var(--vp-space-sm);
+  background: transparent;
+  border: 1px solid var(--vp-color-border-primary);
+  border-radius: var(--vp-radius-sm);
+  color: var(--vp-color-text-secondary);
+  font-size: var(--vp-font-size-xs);
+  cursor: pointer;
+  transition: all var(--vp-transition-fast);
+}
+
+.vp-panel-toggle:hover {
+  background: var(--vp-color-bg-hover);
+  color: var(--vp-color-text-primary);
+}
+
+.vp-panel-toggle[aria-pressed="true"] {
+  background: var(--vp-color-primary);
+  color: var(--vp-color-text-inverse);
+  border-color: var(--vp-color-primary);
+}
+
+/* ==========================================================================
+   Workspace Container
+   ========================================================================== */
+
+.vp-workspace-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ==========================================================================
+   Panel Layout
+   ========================================================================== */
+
+.vp-context-panel,
+.vp-ai-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--vp-color-bg-secondary);
+  border-right: 1px solid var(--vp-color-border-primary);
+  transition: all var(--vp-transition-normal);
+  min-width: 200px;
+  max-width: 500px;
+  position: relative;
+}
+
+.vp-ai-panel {
+  border-right: none;
+  border-left: 1px solid var(--vp-color-border-primary);
+}
+
+.vp-main-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--vp-color-bg-primary);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Panel Collapsed States */
+.vp-panel-collapsed {
+  width: 48px !important;
+  min-width: 48px;
+  max-width: 48px;
+  overflow: hidden;
+}
+
+.vp-panel-collapsed .vp-panel-content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Resize Handles
+   ========================================================================== */
+
+.vp-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background-color var(--vp-transition-fast);
+}
+
+.vp-resize-handle:hover,
+.vp-workspace-resizing .vp-resize-handle {
+  background: var(--vp-color-primary);
+}
+
+.vp-resize-handle-left {
+  right: -2px;
+}
+
+.vp-resize-handle-right {
+  left: -2px;
+}
+
+/* Active resize state */
+.vp-workspace-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.vp-workspace-resizing * {
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Panel Content
+   ========================================================================== */
+
+.vp-panel-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--vp-color-text-secondary);
+  font-size: var(--vp-font-size-sm);
+  text-align: center;
+  padding: var(--vp-space-lg);
+}
+
+/* ==========================================================================
+   Main Panel Content
+   ========================================================================== */
+
+.vp-main-panel-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.vp-main-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--vp-space-lg);
+  border-bottom: 1px solid var(--vp-color-border-primary);
+  background: var(--vp-color-bg-secondary);
+}
+
+.vp-main-panel-header h2 {
+  margin: 0;
+  font-size: var(--vp-font-size-lg);
+  font-weight: var(--vp-font-weight-semibold);
+  color: var(--vp-color-text-primary);
+}
+
+.vp-main-panel-body {
+  flex: 1;
+  padding: var(--vp-space-lg);
+  overflow: auto;
+}
+
+/* Mode-specific content styles */
+.vp-main-panel-content[data-mode="chat"] {
+  --mode-color: var(--vp-color-primary);
+}
+
+.vp-main-panel-content[data-mode="workflow"] {
+  --mode-color: var(--vp-color-ai-processing);
+}
+
+.vp-main-panel-content[data-mode="explorer"] {
+  --mode-color: var(--vp-color-success);
+}
+
+.vp-main-panel-content[data-mode="analytics"] {
+  --mode-color: var(--vp-color-warning);
+}
+
+.vp-main-panel-header {
+  border-left: 3px solid var(--mode-color, var(--vp-color-primary));
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+/* Tablet breakpoint */
+@media (max-width: 1024px) {
+  .vp-context-panel,
+  .vp-ai-panel {
+    width: 250px !important;
+    min-width: 250px;
+  }
+  
+  .vp-global-search {
+    width: 180px;
+  }
+}
+
+/* Mobile breakpoint */
+@media (max-width: 768px) {
+  .vp-command-bar {
+    padding: 0 var(--vp-space-md);
+  }
+  
+  .vp-mode-switcher {
+    gap: var(--vp-space-xs);
+  }
+  
+  .vp-mode-button {
+    padding: var(--vp-space-xs);
+    font-size: var(--vp-font-size-xs);
+  }
+  
+  .vp-global-search {
+    width: 120px;
+  }
+  
+  .vp-action-bar {
+    gap: var(--vp-space-sm);
+  }
+  
+  .vp-panel-toggles {
+    display: none; /* Hide panel toggles on mobile, use gesture/menu instead */
+  }
+  
+  /* Auto-collapse panels on mobile */
+  .vp-context-panel:not(.vp-panel-collapsed),
+  .vp-ai-panel:not(.vp-panel-collapsed) {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 50;
+    box-shadow: var(--vp-shadow-lg);
+  }
+  
+  .vp-context-panel:not(.vp-panel-collapsed) {
+    left: 0;
+    width: 280px !important;
+  }
+  
+  .vp-ai-panel:not(.vp-panel-collapsed) {
+    right: 0;
+    width: 280px !important;
+  }
+  
+  /* Mobile overlay for panels */
+  .vp-workspace-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--vp-transition-fast);
+  }
+  
+  .vp-workspace-container.vp-mobile-panel-open::before {
+    opacity: 1;
+    pointer-events: all;
+  }
+  
+  /* Resize handles disabled on mobile */
+  .vp-resize-handle {
+    display: none;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+  .vp-mode-button span {
+    display: none; /* Show only icons on very small screens */
+  }
+  
+  .vp-global-search {
+    width: 100px;
+  }
+}
+
+/* ==========================================================================
+   Touch-Friendly Enhancements
+   ========================================================================== */
+
+@media (hover: none) and (pointer: coarse) {
+  /* Touch device optimizations */
+  .vp-mode-button,
+  .vp-panel-toggle {
+    min-height: 44px; /* Touch-friendly minimum */
+    min-width: 44px;
+  }
+  
+  .vp-mode-button {
+    padding: var(--vp-space-sm) var(--vp-space-md);
+  }
+  
+  /* Enhanced tap targets */
+  .vp-mode-button::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    z-index: -1;
+  }
+}
+
+/* ==========================================================================
+   High Contrast Support
+   ========================================================================== */
+
+@media (prefers-contrast: high) {
+  .vp-workspace {
+    border: 2px solid var(--vp-color-text-primary);
+  }
+  
+  .vp-context-panel,
+  .vp-ai-panel,
+  .vp-main-panel {
+    border-width: 2px;
+  }
+  
+  .vp-mode-button,
+  .vp-panel-toggle {
+    border-width: 2px;
+  }
+  
+  .vp-mode-button.vp-mode-active {
+    border-width: 3px;
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion Support
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-context-panel,
+  .vp-ai-panel,
+  .vp-mode-button,
+  .vp-panel-toggle,
+  .vp-resize-handle {
+    transition: none;
+  }
+  
+  .vp-workspace-container::before {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   Focus Management
+   ========================================================================== */
+
+/* Skip link for keyboard navigation */
+.vp-skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--vp-color-primary);
+  color: var(--vp-color-text-inverse);
+  padding: 8px;
+  text-decoration: none;
+  border-radius: var(--vp-radius-sm);
+  z-index: 1000;
+  transition: top var(--vp-transition-fast);
+}
+
+.vp-skip-link:focus {
+  top: 6px;
+}
+
+/* Focus trap for modal-like panels on mobile */
+.vp-focus-trap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .vp-workspace {
+    height: auto;
+    overflow: visible;
+  }
+  
+  .vp-command-bar {
+    display: none;
+  }
+  
+  .vp-context-panel,
+  .vp-ai-panel {
+    display: none;
+  }
+  
+  .vp-main-panel {
+    width: 100%;
+    background: white;
+    color: black;
+  }
+  
+  .vp-workspace-container {
+    flex-direction: column;
+  }
+}
+
+/* ==========================================================================
+   Animation Classes
+   ========================================================================== */
+
+.vp-slide-in-left {
+  animation: slideInLeft var(--vp-transition-normal) ease-out;
+}
+
+.vp-slide-in-right {
+  animation: slideInRight var(--vp-transition-normal) ease-out;
+}
+
+.vp-fade-in {
+  animation: fadeIn var(--vp-transition-fast) ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

@@ -1,0 +1,551 @@
+/**
+ * VaultPilot Context Panel Styles
+ * 
+ * Styling for the context panel including vault state, context sources,
+ * and quick actions with full accessibility and responsive design.
+ */
+
+/* ==========================================================================
+   Context Panel Layout
+   ========================================================================== */
+
+.vp-context-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--vp-color-bg-secondary);
+  border-right: 1px solid var(--vp-color-border-primary);
+  overflow: hidden;
+}
+
+.vp-context-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--vp-space-md) var(--vp-space-lg);
+  border-bottom: 1px solid var(--vp-color-border-primary);
+  background: var(--vp-color-bg-primary);
+  flex-shrink: 0;
+}
+
+.vp-panel-title-container {
+  flex: 1;
+}
+
+.vp-panel-title {
+  margin: 0;
+  font-size: var(--vp-font-size-md);
+  font-weight: var(--vp-font-weight-semibold);
+  color: var(--vp-color-text-primary);
+}
+
+.vp-panel-actions {
+  display: flex;
+  gap: var(--vp-space-xs);
+}
+
+/* ==========================================================================
+   Context Sections
+   ========================================================================== */
+
+.vp-context-section {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--vp-space-lg);
+  overflow: hidden;
+}
+
+.vp-context-section:last-child {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.vp-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--vp-space-sm) var(--vp-space-lg);
+  background: var(--vp-color-bg-tertiary);
+  border-bottom: 1px solid var(--vp-color-border-primary);
+}
+
+.vp-section-title-container {
+  display: flex;
+  align-items: center;
+  gap: var(--vp-space-sm);
+}
+
+.vp-section-title {
+  margin: 0;
+  font-size: var(--vp-font-size-sm);
+  font-weight: var(--vp-font-weight-medium);
+  color: var(--vp-color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vp-context-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--vp-space-xs);
+  background: var(--vp-color-primary);
+  color: var(--vp-color-text-inverse);
+  font-size: var(--vp-font-size-xs);
+  font-weight: var(--vp-font-weight-semibold);
+  border-radius: var(--vp-radius-full);
+}
+
+/* ==========================================================================
+   Vault State Section
+   ========================================================================== */
+
+.vp-vault-state {
+  padding: var(--vp-space-lg);
+}
+
+.vp-vault-health {
+  display: flex;
+  align-items: center;
+  gap: var(--vp-space-sm);
+  margin-bottom: var(--vp-space-md);
+}
+
+.vp-health-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--vp-radius-full);
+  transition: all var(--vp-transition-fast);
+}
+
+.vp-health-indicator.vp-health-good {
+  color: var(--vp-color-success);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.vp-health-indicator.vp-health-warning {
+  color: var(--vp-color-warning);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.vp-health-indicator.vp-health-error {
+  color: var(--vp-color-error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.vp-health-text {
+  font-size: var(--vp-font-size-sm);
+  font-weight: var(--vp-font-weight-medium);
+  color: var(--vp-color-text-primary);
+  text-transform: capitalize;
+}
+
+.vp-vault-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--vp-space-md);
+  margin-bottom: var(--vp-space-md);
+}
+
+.vp-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.vp-stat-value {
+  font-size: var(--vp-font-size-lg);
+  font-weight: var(--vp-font-weight-bold);
+  color: var(--vp-color-text-primary);
+  line-height: var(--vp-line-height-tight);
+}
+
+.vp-stat-label {
+  font-size: var(--vp-font-size-xs);
+  color: var(--vp-color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: var(--vp-space-xs);
+}
+
+.vp-sync-info {
+  text-align: center;
+  padding-top: var(--vp-space-md);
+  border-top: 1px solid var(--vp-color-border-primary);
+}
+
+.vp-sync-text {
+  font-size: var(--vp-font-size-xs);
+  color: var(--vp-color-text-tertiary);
+}
+
+/* ==========================================================================
+   Context Sources Section
+   ========================================================================== */
+
+.vp-context-sources {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--vp-space-sm);
+}
+
+.vp-context-source {
+  background: var(--vp-color-bg-primary);
+  border: 1px solid var(--vp-color-border-primary);
+  border-radius: var(--vp-radius-md);
+  margin-bottom: var(--vp-space-sm);
+  transition: all var(--vp-transition-fast);
+  position: relative;
+}
+
+.vp-context-source:hover {
+  border-color: var(--vp-color-border-hover);
+  box-shadow: var(--vp-shadow-sm);
+}
+
+.vp-context-source.vp-source-active {
+  border-color: var(--vp-color-primary);
+  background: var(--vp-color-bg-primary);
+}
+
+.vp-context-source.vp-source-inactive {
+  opacity: 0.6;
+  background: var(--vp-color-bg-secondary);
+}
+
+.vp-source-header {
+  display: flex;
+  align-items: center;
+  gap: var(--vp-space-sm);
+  padding: var(--vp-space-md);
+}
+
+.vp-source-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--vp-color-primary);
+  flex-shrink: 0;
+}
+
+.vp-source-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.vp-source-name {
+  font-size: var(--vp-font-size-sm);
+  font-weight: var(--vp-font-weight-medium);
+  color: var(--vp-color-text-primary);
+  margin-bottom: var(--vp-space-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vp-source-meta {
+  font-size: var(--vp-font-size-xs);
+  color: var(--vp-color-text-tertiary);
+}
+
+.vp-source-toggle {
+  width: 36px;
+  height: 20px;
+  background: var(--vp-color-bg-tertiary);
+  border: 2px solid var(--vp-color-border-primary);
+  border-radius: var(--vp-radius-full);
+  cursor: pointer;
+  transition: all var(--vp-transition-fast);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.vp-source-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: var(--vp-radius-full);
+  transition: transform var(--vp-transition-fast);
+}
+
+.vp-source-toggle.vp-toggle-active {
+  background: var(--vp-color-primary);
+  border-color: var(--vp-color-primary);
+}
+
+.vp-source-toggle.vp-toggle-active::after {
+  transform: translateX(16px);
+}
+
+.vp-source-toggle:hover {
+  border-color: var(--vp-color-border-hover);
+}
+
+.vp-source-toggle:focus-visible {
+  outline: 2px solid var(--vp-color-primary);
+  outline-offset: 2px;
+}
+
+.vp-source-confidence {
+  padding: 0 var(--vp-space-md) var(--vp-space-sm);
+}
+
+.vp-confidence-bar {
+  height: 3px;
+  border-radius: var(--vp-radius-full);
+  transition: width var(--vp-transition-normal);
+}
+
+.vp-confidence-bar.vp-confidence-high {
+  background: var(--vp-color-ai-confident);
+}
+
+.vp-confidence-bar.vp-confidence-moderate {
+  background: var(--vp-color-ai-moderate);
+}
+
+.vp-confidence-bar.vp-confidence-low {
+  background: var(--vp-color-ai-uncertain);
+}
+
+.vp-source-preview {
+  padding: 0 var(--vp-space-md) var(--vp-space-md);
+  border-top: 1px solid var(--vp-color-border-primary);
+  margin-top: var(--vp-space-sm);
+}
+
+.vp-source-preview p {
+  margin: 0;
+  font-size: var(--vp-font-size-xs);
+  color: var(--vp-color-text-secondary);
+  line-height: var(--vp-line-height-relaxed);
+}
+
+.vp-source-remove {
+  position: absolute;
+  top: var(--vp-space-xs);
+  right: var(--vp-space-xs);
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: var(--vp-radius-sm);
+  color: var(--vp-color-text-tertiary);
+  cursor: pointer;
+  transition: all var(--vp-transition-fast);
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vp-context-source:hover .vp-source-remove {
+  opacity: 1;
+}
+
+.vp-source-remove:hover {
+  background: var(--vp-color-error);
+  color: white;
+}
+
+.vp-source-remove:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--vp-color-primary);
+  outline-offset: 2px;
+}
+
+/* Empty state */
+.vp-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vp-space-3xl) var(--vp-space-lg);
+  text-align: center;
+}
+
+.vp-empty-text {
+  margin: 0 0 var(--vp-space-lg) 0;
+  color: var(--vp-color-text-tertiary);
+  font-size: var(--vp-font-size-sm);
+}
+
+/* ==========================================================================
+   Quick Actions Section
+   ========================================================================== */
+
+.vp-quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vp-space-xs);
+  padding: var(--vp-space-sm) var(--vp-space-lg);
+  border-top: 1px solid var(--vp-color-border-primary);
+  background: var(--vp-color-bg-tertiary);
+}
+
+.vp-quick-actions .vp-button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+/* Tablet breakpoint */
+@media (max-width: 1024px) {
+  .vp-vault-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .vp-context-panel-header,
+  .vp-section-header {
+    padding: var(--vp-space-sm) var(--vp-space-md);
+  }
+  
+  .vp-vault-state,
+  .vp-context-sources,
+  .vp-quick-actions {
+    padding: var(--vp-space-sm) var(--vp-space-md);
+  }
+}
+
+/* Mobile breakpoint */
+@media (max-width: 768px) {
+  .vp-vault-stats {
+    grid-template-columns: 1fr;
+    gap: var(--vp-space-sm);
+  }
+  
+  .vp-stat {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+  }
+  
+  .vp-stat-label {
+    margin-top: 0;
+    margin-left: var(--vp-space-sm);
+  }
+  
+  .vp-source-header {
+    padding: var(--vp-space-sm);
+  }
+  
+  .vp-source-name {
+    font-size: var(--vp-font-size-xs);
+  }
+  
+  .vp-context-panel-header {
+    padding: var(--vp-space-sm);
+  }
+  
+  .vp-panel-title {
+    font-size: var(--vp-font-size-sm);
+  }
+}
+
+/* ==========================================================================
+   Dark Theme Adjustments
+   ========================================================================== */
+
+.theme-dark .vp-source-toggle::after {
+  background: var(--vp-color-bg-primary);
+}
+
+.theme-dark .vp-context-source.vp-source-inactive {
+  background: var(--vp-color-bg-tertiary);
+}
+
+/* ==========================================================================
+   High Contrast Support
+   ========================================================================== */
+
+@media (prefers-contrast: high) {
+  .vp-context-source {
+    border-width: 2px;
+  }
+  
+  .vp-source-toggle {
+    border-width: 3px;
+  }
+  
+  .vp-health-indicator {
+    border: 2px solid currentColor;
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion Support
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-context-source,
+  .vp-source-toggle,
+  .vp-source-toggle::after,
+  .vp-confidence-bar,
+  .vp-source-remove {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   Focus Management
+   ========================================================================== */
+
+.vp-context-sources:focus-within {
+  outline: 2px solid var(--vp-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--vp-radius-sm);
+}
+
+/* ==========================================================================
+   Animation Classes
+   ========================================================================== */
+
+.vp-context-source-enter {
+  animation: contextSourceEnter var(--vp-transition-normal) ease-out;
+}
+
+.vp-context-source-exit {
+  animation: contextSourceExit var(--vp-transition-fast) ease-in;
+}
+
+@keyframes contextSourceEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 200px;
+  }
+}
+
+@keyframes contextSourceExit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 200px;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+    max-height: 0;
+  }
+}

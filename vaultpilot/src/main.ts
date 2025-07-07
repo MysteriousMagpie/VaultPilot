@@ -22,6 +22,8 @@ import { Phase3Integration } from './components/Phase3Integration';
 // Enhanced UI Components
 import { VaultPilotEnhancementManager } from './vault-management/enhanced-ui-components';
 import { KeyboardShortcutHandler, EnhancedCommandsFactory } from './vault-management/enhanced-commands';
+// Phase 1 UI/UX Overhaul - Workspace Manager
+import { WorkspaceManager } from './workspace/WorkspaceManager';
 
 export default class VaultPilotPlugin extends Plugin {
   settings!: VaultPilotSettings;
@@ -31,6 +33,7 @@ export default class VaultPilotPlugin extends Plugin {
   phase3Integration?: Phase3Integration;
   enhancementManager?: VaultPilotEnhancementManager;
   keyboardHandler?: KeyboardShortcutHandler;
+  workspaceManager?: WorkspaceManager;
   private websocketConnected = false;
   private copilotEnabled = false;
 
@@ -39,6 +42,9 @@ export default class VaultPilotPlugin extends Plugin {
 
     // Load enhanced UI styles
     this.loadEnhancedUIStyles();
+    
+    // Load workspace styles
+    this.loadWorkspaceStyles();
 
     // Initialize app instance for vault-utils
     setApp(this.app);
@@ -202,6 +208,49 @@ export default class VaultPilotPlugin extends Plugin {
       callback: () => this.activateFullTabView()
     });
 
+    this.addCommand({
+      id: 'toggle-unified-workspace',
+      name: 'Toggle VaultPilot Unified Workspace',
+      callback: () => this.toggleUnifiedWorkspace()
+    });
+
+    this.addCommand({
+      id: 'add-current-file-to-context',
+      name: 'Add Current File to Context',
+      callback: () => this.addCurrentFileToContext()
+    });
+
+    this.addCommand({
+      id: 'clear-all-context',
+      name: 'Clear All Context Sources',
+      callback: () => this.clearAllContext()
+    });
+
+    // Week 8: Integration testing and optimization commands
+    this.addCommand({
+      id: 'run-integration-tests',
+      name: 'Run VaultPilot Integration Tests',
+      callback: () => this.runIntegrationTests()
+    });
+
+    this.addCommand({
+      id: 'clear-performance-cache',
+      name: 'Clear VaultPilot Performance Cache',
+      callback: () => this.clearPerformanceCache()
+    });
+
+    this.addCommand({
+      id: 'show-performance-metrics',
+      name: 'Show VaultPilot Performance Metrics',
+      callback: () => this.showPerformanceMetrics()
+    });
+
+    this.addCommand({
+      id: 'refresh-current-mode',
+      name: 'Refresh Current VaultPilot Mode',
+      callback: () => this.refreshCurrentMode()
+    });
+
     // Register vault management commands
     this.registerVaultManagementCommands();
 
@@ -210,6 +259,9 @@ export default class VaultPilotPlugin extends Plugin {
 
     // Initialize Enhancement Manager and Keyboard Shortcuts
     this.initializeEnhancementManager();
+    
+    // Initialize Phase 1 Workspace Manager
+    this.initializeWorkspaceManager();
 
     // Register editor events for copilot
     if (this.settings.enableCopilot && this.settings.enableAutoComplete) {
@@ -227,6 +279,7 @@ export default class VaultPilotPlugin extends Plugin {
     await this.disconnectModelSelection();
     this.disablePhase3();
     this.disableEnhancementManager();
+    this.disableWorkspaceManager();
   }
 
   // WebSocket Management
@@ -1372,7 +1425,285 @@ export default class VaultPilotPlugin extends Plugin {
     return null;
   }
 
+  // === PHASE 1 WORKSPACE MANAGER INTEGRATION ===
+
+  initializeWorkspaceManager() {
+    try {
+      // Check if workspace management is enabled in settings
+      const workspaceEnabled = this.settings.workspaceManager?.enabled ?? true;
+      
+      if (!workspaceEnabled) {
+        if (this.settings.debugMode) {
+          console.log('Workspace Manager disabled in settings');
+        }
+        return;
+      }
+
+      // Find a suitable container for the workspace
+      const workspaceContainer = this.findWorkspaceContainer();
+      
+      if (!workspaceContainer) {
+        if (this.settings.debugMode) {
+          console.warn('No suitable container found for Workspace Manager');
+        }
+        return;
+      }
+
+      // Initialize the workspace manager
+      this.workspaceManager = new WorkspaceManager(this, workspaceContainer);
+      
+      // Load the workspace manager
+      this.workspaceManager.onload().then(() => {
+        if (this.settings.debugMode) {
+          console.log('Phase 1 Workspace Manager initialized successfully');
+        }
+        
+        // Show notification for first-time users
+        if (!this.settings.onboardingComplete) {
+          setTimeout(() => {
+            new Notice('🚀 VaultPilot Unified Workspace is now active! Use Cmd+1-4 to switch modes.', 8000);
+            this.settings.onboardingComplete = true;
+            this.saveSettings();
+          }, 2000);
+        }
+      }).catch(error => {
+        console.error('Failed to load Workspace Manager:', error);
+        if (this.settings.debugMode) {
+          new Notice('Workspace Manager failed to initialize - check console for details', 5000);
+        }
+      });
+
+    } catch (error) {
+      console.error('Failed to initialize Workspace Manager:', error);
+      if (this.settings.debugMode) {
+        new Notice('Workspace Manager initialization failed - check console for details', 5000);
+      }
+    }
+  }
+
+  private findWorkspaceContainer(): HTMLElement | null {
+    // Try to find the main workspace container
+    const candidates = [
+      '.workspace-leaf-content[data-type="empty"]',
+      '.workspace-leaf.mod-active .workspace-leaf-content',
+      '.workspace-split.mod-horizontal',
+      '.workspace .workspace-split'
+    ];
+
+    for (const selector of candidates) {
+      const element = document.querySelector(selector) as HTMLElement;
+      if (element && element.isConnected) {
+        return element;
+      }
+    }
+
+    // Fallback: create a dedicated container
+    const workspaceRoot = document.querySelector('.workspace') as HTMLElement;
+    if (workspaceRoot) {
+      const container = workspaceRoot.createDiv('vaultpilot-workspace-container');
+      return container;
+    }
+
+    return null;
+  }
+
+  disableWorkspaceManager() {
+    if (this.workspaceManager) {
+      this.workspaceManager.onunload();
+      this.workspaceManager = undefined;
+    }
+    if (this.settings.debugMode) {
+      console.log('Workspace Manager disabled');
+    }
+  }
+
+  toggleUnifiedWorkspace() {
+    if (this.workspaceManager) {
+      // Workspace is active, disable it
+      this.disableWorkspaceManager();
+      new Notice('VaultPilot Unified Workspace disabled', 3000);
+    } else {
+      // Workspace is not active, enable it
+      this.initializeWorkspaceManager();
+      new Notice('VaultPilot Unified Workspace enabled', 3000);
+    }
+  }
+
+  addCurrentFileToContext() {
+    if (!this.workspaceManager) {
+      new Notice('Unified Workspace not active. Use "Toggle VaultPilot Unified Workspace" command first.');
+      return;
+    }
+
+    const contextPanel = (this.workspaceManager as any).contextPanel;
+    if (contextPanel && typeof contextPanel.addCurrentFileToContext === 'function') {
+      contextPanel.addCurrentFileToContext();
+    } else {
+      new Notice('Context panel not available');
+    }
+  }
+
+  clearAllContext() {
+    if (!this.workspaceManager) {
+      new Notice('Unified Workspace not active. Use "Toggle VaultPilot Unified Workspace" command first.');
+      return;
+    }
+
+    const contextPanel = (this.workspaceManager as any).contextPanel;
+    if (contextPanel && typeof contextPanel.clearAllContext === 'function') {
+      contextPanel.clearAllContext();
+    } else {
+      new Notice('Context panel not available');
+    }
+  }
+
+  // Week 8: Integration testing and optimization command implementations
+
+  async runIntegrationTests() {
+    if (!this.workspaceManager) {
+      new Notice('Unified Workspace not active. Use "Toggle VaultPilot Unified Workspace" command first.');
+      return;
+    }
+
+    try {
+      const results = await this.workspaceManager.runIntegrationTests();
+      
+      const allTests = [
+        ...results.crossModeTests,
+        ...results.performanceTests,
+        ...results.errorHandlingTests,
+        ...results.accessibilityTests
+      ];
+      
+      const passed = allTests.filter(test => test.passed).length;
+      const total = allTests.length;
+      
+      if (passed === total) {
+        new Notice(`✅ All ${total} integration tests passed!`, 5000);
+      } else {
+        new Notice(`⚠️ ${passed}/${total} integration tests passed. Check console for details.`, 5000);
+      }
+      
+      // Auto-export results
+      await this.workspaceManager.exportTestResults();
+      
+    } catch (error) {
+      new Notice('❌ Integration tests failed: ' + (error instanceof Error ? error.message : 'Unknown error'), 5000);
+      console.error('Integration test error:', error);
+    }
+  }
+
+  clearPerformanceCache() {
+    if (!this.workspaceManager) {
+      new Notice('Unified Workspace not active.');
+      return;
+    }
+
+    const mainPanel = this.workspaceManager.getMainPanel();
+    if (mainPanel) {
+      mainPanel.clearModeSwitchCache();
+      mainPanel.clearPerformanceMetrics();
+      new Notice('✅ Performance cache cleared');
+    } else {
+      new Notice('Main panel not available');
+    }
+  }
+
+  showPerformanceMetrics() {
+    if (!this.workspaceManager) {
+      new Notice('Unified Workspace not active.');
+      return;
+    }
+
+    const mainPanel = this.workspaceManager.getMainPanel();
+    if (mainPanel) {
+      const metrics = mainPanel.getPerformanceMetrics();
+      const avgSwitchTime = mainPanel.getAverageModeSwitchTime();
+      const cacheStatus = mainPanel.getCacheStatus();
+      
+      console.log('🔍 VaultPilot Performance Metrics:');
+      console.log('Average mode switch time:', avgSwitchTime.toFixed(2) + 'ms');
+      console.log('Cache status:', cacheStatus);
+      // Convert Map to object for logging (compatible with older ES versions)
+      const metricsObj: { [key: string]: number } = {};
+      metrics.forEach((value, key) => {
+        metricsObj[key] = value;
+      });
+      console.log('All metrics:', metricsObj);
+      
+      let message = `Average mode switch: ${avgSwitchTime.toFixed(2)}ms`;
+      if (avgSwitchTime <= 150) {
+        message += ' ✅ (Excellent)';
+      } else if (avgSwitchTime <= 200) {
+        message += ' ⚠️ (Good)';
+      } else {
+        message += ' ❌ (Needs optimization)';
+      }
+      
+      new Notice(message + ` | Cache: ${cacheStatus.size} modes`, 5000);
+    } else {
+      new Notice('Main panel not available');
+    }
+  }
+
+  async refreshCurrentMode() {
+    if (!this.workspaceManager) {
+      new Notice('Unified Workspace not active.');
+      return;
+    }
+
+    const mainPanel = this.workspaceManager.getMainPanel();
+    if (mainPanel) {
+      try {
+        await mainPanel.forceRefreshCurrentMode();
+      } catch (error) {
+        new Notice('Failed to refresh current mode');
+        console.error('Mode refresh error:', error);
+      }
+    } else {
+      new Notice('Main panel not available');
+    }
+  }
+
+  // === END PHASE 1 WORKSPACE MANAGER INTEGRATION ===
+
   // === ENHANCED UI STYLES ===
+
+  private loadWorkspaceStyles() {
+    // Load workspace styles
+    const styleId = 'vaultpilot-workspace-styles';
+    
+    // Remove existing styles if they exist
+    const existingStyle = document.getElementById(styleId);
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+
+    // Create new style element
+    const style = document.createElement('style');
+    style.id = styleId;
+    
+    // Import workspace CSS
+    style.textContent = `
+      /* VaultPilot Workspace Styles */
+      @import url("app://obsidian.md/workspace/workspace.css");
+      
+      /* Panel Styles */
+      @import url("app://obsidian.md/workspace/panels/context-panel.css");
+      @import url("app://obsidian.md/workspace/panels/main-panel.css");
+      @import url("app://obsidian.md/workspace/panels/ai-panel.css");
+      
+      /* Design System Integration */
+      @import url("app://obsidian.md/design-system/styles/design-system.css");
+    `;
+    
+    // Add to document head
+    document.head.appendChild(style);
+    
+    if (this.settings.debugMode) {
+      console.log('Workspace styles loaded');
+    }
+  }
 
   private loadEnhancedUIStyles() {
     // Load enhanced UI styles for progress indicators and keyboard shortcuts

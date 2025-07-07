@@ -1,0 +1,36 @@
+/**
+ * VaultPilot AI Panel Styles
+ * 
+ * Placeholder styling for the AI Panel component.
+ */
+
+.vp-ai-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--vp-color-bg-secondary);
+  border-left: 1px solid var(--vp-color-border-primary);
+}
+
+.vp-ai-panel-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--vp-space-2xl);
+  text-align: center;
+}
+
+.vp-ai-panel-placeholder h3 {
+  margin: 0 0 var(--vp-space-md) 0;
+  color: var(--vp-color-text-primary);
+  font-size: var(--vp-font-size-lg);
+}
+
+.vp-ai-panel-placeholder p {
+  margin: 0;
+  color: var(--vp-color-text-secondary);
+  font-size: var(--vp-font-size-sm);
+  line-height: var(--vp-line-height-relaxed);
+}

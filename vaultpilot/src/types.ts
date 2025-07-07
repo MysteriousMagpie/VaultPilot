@@ -288,6 +288,17 @@ export interface VaultPilotSettings {
   transportConfig?: any;
   advancedConfiguration?: any;
   configurationProfiles?: any[];
+  
+  // Workspace Manager Settings
+  workspaceManager?: {
+    enabled: boolean;
+    autoSwitchMode?: boolean;
+    defaultMode?: 'chat' | 'workflow' | 'explorer' | 'analytics';
+    panelSizes?: {
+      context?: number;
+      ai?: number;
+    };
+  };
 }
 
 export interface ModelSelectionSettings {
