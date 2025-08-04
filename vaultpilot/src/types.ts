@@ -59,11 +59,9 @@ export interface ChatStreamRequest {
   message: string;
   conversation_id?: string;
   vault_context?: string;
-  context?: string; // Alias for backward compatibility
   agent_id?: string;
   stream?: boolean;
   stream_options?: Record<string, any>;
-  development_context?: any; // Development context from DevelopmentContextService
 }
 
 export interface ChatStreamChunk {
@@ -288,17 +286,6 @@ export interface VaultPilotSettings {
   transportConfig?: any;
   advancedConfiguration?: any;
   configurationProfiles?: any[];
-  
-  // Workspace Manager Settings
-  workspaceManager?: {
-    enabled: boolean;
-    autoSwitchMode?: boolean;
-    defaultMode?: 'chat' | 'workflow' | 'explorer' | 'analytics';
-    panelSizes?: {
-      context?: number;
-      ai?: number;
-    };
-  };
 }
 
 export interface ModelSelectionSettings {

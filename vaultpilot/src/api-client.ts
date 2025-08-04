@@ -205,7 +205,6 @@ export class EvoAgentXClient {
     context: string | null; 
     conversation_id?: string; 
     agent_id?: string;
-    development_context?: any;
   }): Promise<ReadableStream> {
     const url = `${this.baseUrl}/api/obsidian/chat/stream`;
     const headers: Record<string, string> = {
@@ -225,7 +224,6 @@ export class EvoAgentXClient {
         vault_context: payload.context || undefined,
         conversation_id: payload.conversation_id,
         agent_id: payload.agent_id,
-        development_context: payload.development_context,
         stream: true
       }),
       mode: 'cors',

@@ -42,6 +42,7 @@
 - [`DESIGN_SYSTEM_SPECIFICATION.md`](./DESIGN_SYSTEM_SPECIFICATION.md) - Component library documentation
 - [`AI_TRANSPARENCY_FRAMEWORK.md`](./AI_TRANSPARENCY_FRAMEWORK.md) - Context management system
 - [`ACCESSIBILITY_COMPLIANCE_REPORT.md`](./ACCESSIBILITY_COMPLIANCE_REPORT.md) - WCAG 2.1 AA documentation
+- [`DEV_PIPE_CLAUDE_GUIDE.md`](./DEV_PIPE_CLAUDE_GUIDE.md) - Dev-Pipe framework guide for AI assistants
 
 ### **Implementation Guides**
 - [`FOUNDATION_IMPLEMENTATION_GUIDE.md`](./FOUNDATION_IMPLEMENTATION_GUIDE.md) - Week 1-4 implementation details

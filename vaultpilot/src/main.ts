@@ -24,6 +24,8 @@ import { VaultPilotEnhancementManager } from './vault-management/enhanced-ui-com
 import { KeyboardShortcutHandler, EnhancedCommandsFactory } from './vault-management/enhanced-commands';
 // Phase 1 UI/UX Overhaul - Workspace Manager
 import { WorkspaceManager } from './workspace/WorkspaceManager';
+// Conversation Development Service
+import { ConversationDevService } from './services/ConversationDevService';
 
 export default class VaultPilotPlugin extends Plugin {
   settings!: VaultPilotSettings;
@@ -34,6 +36,7 @@ export default class VaultPilotPlugin extends Plugin {
   enhancementManager?: VaultPilotEnhancementManager;
   keyboardHandler?: KeyboardShortcutHandler;
   workspaceManager?: WorkspaceManager;
+  conversationDevService?: ConversationDevService;
   private websocketConnected = false;
   private copilotEnabled = false;
 
@@ -67,6 +70,14 @@ export default class VaultPilotPlugin extends Plugin {
         // Silently fail during plugin initialization
       });
     }
+
+    // Initialize conversation dev service
+    this.initializeConversationDevService().catch(error => {
+      if (this.settings.debugMode) {
+        console.warn('Conversation dev service initialization failed:', error);
+      }
+      // Silently fail during plugin initialization
+    });
 
     // Test backend connection
     try {
@@ -251,6 +262,25 @@ export default class VaultPilotPlugin extends Plugin {
       callback: () => this.refreshCurrentMode()
     });
 
+    // Conversation Dev Feature Commands
+    this.addCommand({
+      id: 'dev-chat-enhanced',
+      name: 'Enhanced Development Chat',
+      callback: () => this.openEnhancedDevChat()
+    });
+
+    this.addCommand({
+      id: 'conversation-insights',
+      name: 'Show Conversation Development Insights',
+      callback: () => this.showConversationInsights()
+    });
+
+    this.addCommand({
+      id: 'conversation-dev-status',
+      name: 'Show Conversation Dev Service Status',
+      callback: () => this.showConversationDevStatus()
+    });
+
     // Register vault management commands
     this.registerVaultManagementCommands();
 
@@ -277,6 +307,7 @@ export default class VaultPilotPlugin extends Plugin {
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_VAULTPILOT_FULL_TAB);
     this.disconnectWebSocket();
     await this.disconnectModelSelection();
+    await this.disconnectConversationDevService();
     this.disablePhase3();
     this.disableEnhancementManager();
     this.disableWorkspaceManager();
@@ -1316,6 +1347,46 @@ export default class VaultPilotPlugin extends Plugin {
     }
   }
 
+  // Conversation Dev Service Management Methods
+  async initializeConversationDevService(): Promise<void> {
+    try {
+      this.conversationDevService = new ConversationDevService(this, {
+        enableContextEnrichment: true,
+        enableIntelligentModelSelection: this.settings.modelSelection?.enabled || false,
+        enableDevPipeTransport: this.settings.modelSelection?.enabled || false,
+        contextDepth: 'standard',
+        debugMode: this.settings.debugMode
+      });
+
+      await this.conversationDevService.initialize();
+
+      if (this.settings.debugMode) {
+        console.log('ConversationDevService initialized successfully');
+      }
+
+    } catch (error) {
+      if (this.settings.debugMode) {
+        console.error('ConversationDevService initialization failed:', error);
+      }
+      // Allow graceful degradation - don't throw
+    }
+  }
+
+  async disconnectConversationDevService(): Promise<void> {
+    if (this.conversationDevService) {
+      try {
+        await this.conversationDevService.shutdown();
+        this.conversationDevService = undefined;
+        
+        if (this.settings.debugMode) {
+          console.log('ConversationDevService disconnected');
+        }
+      } catch (error) {
+        console.error('Error disconnecting ConversationDevService:', error);
+      }
+    }
+  }
+
   async testModelSelection(): Promise<void> {
     if (!this.modelSelectionService) {
       new Notice('❌ Model selection service not initialized', 5000);
@@ -1665,6 +1736,68 @@ export default class VaultPilotPlugin extends Plugin {
     }
   }
 
+  // === CONVERSATION DEV FEATURE METHODS ===
+
+  async openEnhancedDevChat() {
+    if (!this.conversationDevService) {
+      new Notice('Conversation Dev Service not available');
+      return;
+    }
+
+    // Create and show enhanced dev chat modal
+    const { ConversationDevModal } = await import('./modals/ConversationDevModal');
+    const modal = new ConversationDevModal(this.app, this, this.conversationDevService);
+    modal.open();
+  }
+
+  async showConversationInsights() {
+    if (!this.conversationDevService) {
+      new Notice('Conversation Dev Service not available');
+      return;
+    }
+
+    try {
+      const insights = await this.conversationDevService.getConversationInsights();
+      const { ConversationInsightsModal } = await import('./modals/ConversationInsightsModal');
+      const modal = new ConversationInsightsModal(this.app, insights);
+      modal.open();
+    } catch (error) {
+      new Notice('Failed to get conversation insights');
+      console.error('Conversation insights error:', error);
+    }
+  }
+
+  async showConversationDevStatus() {
+    if (!this.conversationDevService) {
+      new Notice('Conversation Dev Service not available');
+      return;
+    }
+
+    const status = this.conversationDevService.getStatus();
+    const metrics = this.conversationDevService.getMetrics();
+
+    let statusText = '💬 Conversation Dev Service Status:\n\n';
+    statusText += `🔧 Initialized: ${status.initialized ? '✅' : '❌'}\n`;
+    statusText += `🔗 DevPipe Ready: ${status.devPipeReady ? '✅' : '❌'}\n`;
+    statusText += `📖 Context Service: ${status.contextServiceReady ? '✅' : '❌'}\n\n`;
+    
+    statusText += '📊 Metrics:\n';
+    statusText += `   Total Conversations: ${metrics.totalConversations}\n`;
+    statusText += `   Context Enhanced: ${metrics.contextEnhancedConversations}\n`;
+    statusText += `   DevPipe Usage: ${metrics.devPipeUsage}\n`;
+    statusText += `   Average Response: ${Math.round(metrics.averageResponseTime)}ms\n`;
+    statusText += `   Errors: ${metrics.errorCount}\n\n`;
+    
+    statusText += '⚙️ Configuration:\n';
+    statusText += `   Context Enrichment: ${status.config.enableContextEnrichment ? '✅' : '❌'}\n`;
+    statusText += `   Model Selection: ${status.config.enableIntelligentModelSelection ? '✅' : '❌'}\n`;
+    statusText += `   DevPipe Transport: ${status.config.enableDevPipeTransport ? '✅' : '❌'}\n`;
+    statusText += `   Context Depth: ${status.config.contextDepth}\n`;
+    statusText += `   Debug Mode: ${status.config.debugMode ? '✅' : '❌'}`;
+
+    new Notice(statusText, 10000);
+  }
+
   // === END PHASE 1 WORKSPACE MANAGER INTEGRATION ===
 
   // === ENHANCED UI STYLES ===
@@ -1695,6 +1828,9 @@ export default class VaultPilotPlugin extends Plugin {
       
       /* Design System Integration */
       @import url("app://obsidian.md/design-system/styles/design-system.css");
+      
+      /* Conversation Dev Feature Styles */
+      @import url("app://obsidian.md/styles/conversation-dev.css");
     `;
     
     // Add to document head

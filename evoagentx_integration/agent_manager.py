@@ -270,10 +270,8 @@ class AgentManager:
         # This should integrate with your main AI processing system
         
         # Create a chat request with agent-specific system prompt
-        conversation_id = str(uuid.uuid4())
         chat_request = ChatRequest(
             message=request.task,
-            conversation_id=conversation_id,
             vault_context=request.context or "",
             agent_id=agent.id
         )
@@ -284,12 +282,13 @@ class AgentManager:
         return ChatResponse(
             response=response_text,
             agent_used=agent.name,
-            conversation_id=conversation_id,
+            conversation_id=str(uuid.uuid4()),
+            context_used=request.context or "",
+            timestamp=datetime.now().isoformat(),
             metadata={
                 "agent_id": agent.id,
                 "agent_capabilities": agent.capabilities,
-                "task_type": self._classify_task_type(request.task),
-                "context_used": request.context or ""
+                "task_type": self._classify_task_type(request.task)
             }
         )
     
