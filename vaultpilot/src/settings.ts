@@ -37,7 +37,7 @@ export const DEFAULT_SETTINGS: VaultPilotSettings = {
   enableRealTimeUpdates: true,
   enableAnalytics: true,
   // Workspace Manager Settings
-  workspaceManager: {
+  workspaceManager: ({
     enabled: true,
     autoSwitchMode: false,
     defaultMode: 'chat',
@@ -45,7 +45,7 @@ export const DEFAULT_SETTINGS: VaultPilotSettings = {
       context: 300,
       ai: 300
     }
-  }
+  } as any)
 };
 
 export class VaultPilotSettingTab extends PluginSettingTab {

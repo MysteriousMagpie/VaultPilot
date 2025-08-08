@@ -1,0 +1,36 @@
+{
+  "root": true,
+  "env": {
+    "es2022": true,
+    "node": true,
+    "browser": true,
+    "jest": true
+  },
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module",
+    "project": [
+      "./vaultpilot/tsconfig.json",
+      "./vaultpilot-api-integration/tsconfig.json",
+      "./vaultpilot-frontend-package/tsconfig.json"
+    ]
+  },
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "venv/**"
+  ],
+  "rules": {
+    "@typescript-eslint/explicit-function-return-type": ["warn", { "allowExpressions": true }],
+    "@typescript-eslint/no-explicit-any": "off",
+    "no-console": "off"
+  }
+}
+
+

@@ -327,7 +327,7 @@ export class WorkflowModeComponent extends BaseModeComponent {
     }
 
     // Workflow metadata
-    const metaSection = workflowDisplay.createEl('div', { cls: 'vp-workflow-meta' });
+    const metaSection = workflowDisplay.createEl('div', { cls: 'vp-workflow-meta' }) as HTMLElement;
     
     if (workflowData.plan?.estimated_duration) {
       this.createMetaItem(metaSection, 'Duration', workflowData.plan.estimated_duration, 'clock');
@@ -343,16 +343,16 @@ export class WorkflowModeComponent extends BaseModeComponent {
 
     // Tasks section
     if (workflowData.plan?.tasks && workflowData.plan.tasks.length > 0) {
-      this.renderTasksSection(workflowDisplay, workflowData.plan.tasks);
+      this.renderTasksSection(workflowDisplay as HTMLElement, workflowData.plan.tasks);
     }
 
     // Milestones section
     if (workflowData.milestones && workflowData.milestones.length > 0) {
-      this.renderMilestonesSection(workflowDisplay, workflowData.milestones);
+      this.renderMilestonesSection(workflowDisplay as HTMLElement, workflowData.milestones);
     }
 
     // Progress tracking
-    this.addProgressTracking(workflowDisplay);
+    this.addProgressTracking(workflowDisplay as HTMLElement);
   }
 
   private createMetaItem(container: HTMLElement, label: string, value: string, icon: string): void {
@@ -711,7 +711,7 @@ export class WorkflowModeComponent extends BaseModeComponent {
     // Clear display area
     const workflowDisplay = this.container.querySelector('.vp-workflow-display');
     if (workflowDisplay) {
-      this.renderEmptyState(workflowDisplay);
+      this.renderEmptyState(workflowDisplay as HTMLElement);
     }
     
     // Update status

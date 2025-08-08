@@ -155,7 +155,8 @@ export class WebSocketTransport extends BaseTransport {
     }
 
     return new Promise((resolve, reject) => {
-      const wsUrl = this.config.serverUrl!.replace(/^http/, 'ws') + '/api/v1/devpipe/ws';
+      // Prefer canonical agent endpoint; server keeps legacy aliases
+      const wsUrl = this.config.serverUrl!.replace(/^http/, 'ws') + '/ws/agent';
       
       this.websocket = new ReconnectingWebSocket(wsUrl, [], {
         connectionTimeout: this.config.timeout,
@@ -170,6 +171,22 @@ export class WebSocketTransport extends BaseTransport {
         this.startHeartbeat();
         this.emit(TransportEvent.CONNECTED, { transport: this.type });
         this.debug('WebSocket connected');
+        // Minimal handshake for agent link
+        try {
+          const handshake = {
+            type: 'handshake',
+            id: this.generateMessageId(),
+            payload: {
+              sessionId: this.generateMessageId(),
+              client: 'vaultpilot',
+              version: '2.0.0',
+              capabilities: ['chat', 'workflow', 'copilot']
+            }
+          };
+          this.websocket!.send(JSON.stringify(handshake));
+        } catch (e) {
+          this.debug('Handshake failed to send', e);
+        }
         resolve();
       };
       

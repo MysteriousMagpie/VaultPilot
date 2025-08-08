@@ -8,6 +8,7 @@ No confusion, no multiple servers - just one that works.
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -110,6 +111,15 @@ async def health_check():
             "timestamp": datetime.now().isoformat()
         }
     )
+
+# Standardized status endpoint for simple liveness probes
+@app.get("/status")
+async def status_check():
+    return {"status": "ok", "version": "1.0.0"}
+
+@app.head("/status")
+async def status_head():
+    return Response(status_code=200)
 
 @app.get("/api/status") 
 async def get_status():
@@ -383,6 +393,20 @@ async def enhanced_websocket_endpoint(websocket: WebSocket):
                     "timestamp": datetime.now().isoformat()
                 })
             
+    except WebSocketDisconnect:
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+
+# Backward/forward compatible alias used by some clients
+@app.websocket("/ws/obsidian")
+async def websocket_obsidian_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    try:
+        await websocket.send_json({"type": "connection", "data": {"status": "connected"}})
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_json({"type": "response", "data": {"echo": data}})
     except WebSocketDisconnect:
         if websocket in active_connections:
             active_connections.remove(websocket)

@@ -1,0 +1,20 @@
+{
+  "name": "vaultpilot-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "vaultpilot",
+    "vaultpilot-api-integration",
+    "vaultpilot-frontend-package",
+    "vault-management-integration-package"
+  ],
+  "scripts": {
+    "build": "npm run -w vaultpilot build && npm run -w vaultpilot-api-integration build",
+    "lint": "npm run -w vaultpilot lint && npm run -w vaultpilot-api-integration lint || true",
+    "format": "npm run -w vaultpilot-frontend-components format || true",
+    "type-check": "npm run -w vaultpilot lint || true",
+    "test": "npm run -w vaultpilot test || true"
+  }
+}
+
+

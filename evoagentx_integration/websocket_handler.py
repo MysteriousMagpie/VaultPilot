@@ -319,7 +319,41 @@ async def handle_client_message(websocket, vault_id: str, message: dict):
     message_type = message.get("type", "unknown")
     data = message.get("data", {})
     
-    if message_type == "ping":
+    if message_type == "handshake":
+        # Minimal handshake: acknowledge and return agent registry and capabilities
+        try:
+            from .agent_manager import AgentManager
+        except Exception:
+            AgentManager = None  # type: ignore
+        agents = []
+        if AgentManager is not None:
+            try:
+                manager = AgentManager()
+                agents_list = await manager.get_all_agents()
+                # Convert Pydantic/objects to dicts conservatively
+                agents = [
+                    {
+                        "id": getattr(a, 'id', None),
+                        "name": getattr(a, 'name', None),
+                        "capabilities": getattr(a, 'capabilities', []),
+                        "active": getattr(a, 'active', True)
+                    }
+                    for a in agents_list
+                ]
+            except Exception:
+                agents = []
+
+        await websocket_manager.send_to_connection(websocket, {
+            "type": "handshake_ack",
+            "data": {
+                "accepted": True,
+                "acceptedCapabilities": ["chat", "workflow", "copilot"],
+                "agents": agents,
+                "timestamp": datetime.now().isoformat()
+            }
+        })
+
+    elif message_type == "ping":
         # Respond to ping with pong and update heartbeat
         connection_id = id(websocket)
         if connection_id in websocket_manager.connection_metadata:

@@ -337,7 +337,9 @@ export class EvoAgentXClient {
     onConnect?: () => void;
     onDisconnect?: () => void;
   }): void {
-    const wsUrl = this.baseUrl.replace('http', 'ws') + '/ws/obsidian';
+    // Support both legacy `/ws` and explicit `/ws/obsidian` endpoints
+    const baseWsUrl = this.baseUrl.replace('http', 'ws');
+    const wsUrl = `${baseWsUrl}/ws/obsidian`;
     console.log(`VaultPilot: Attempting WebSocket connection to ${wsUrl}`);
     
     this.websocket = new WebSocket(wsUrl);

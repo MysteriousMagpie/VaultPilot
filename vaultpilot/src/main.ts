@@ -1501,7 +1501,7 @@ export default class VaultPilotPlugin extends Plugin {
   initializeWorkspaceManager() {
     try {
       // Check if workspace management is enabled in settings
-      const workspaceEnabled = this.settings.workspaceManager?.enabled ?? true;
+      const workspaceEnabled = (this.settings as any).workspaceManager?.enabled ?? true;
       
       if (!workspaceEnabled) {
         if (this.settings.debugMode) {

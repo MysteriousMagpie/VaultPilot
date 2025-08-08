@@ -276,6 +276,12 @@ export interface VaultPilotSettings {
   showIntentDebug: boolean;
   vaultManagement?: VaultManagementSettings;
   modelSelection?: ModelSelectionSettings;
+  workspaceManager?: {
+    enabled?: boolean;
+    autoSwitchMode?: boolean;
+    defaultMode?: string;
+    panelSizes?: { context?: number; ai?: number };
+  };
   
   // Phase 3 Settings
   onboardingComplete?: boolean;

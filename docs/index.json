@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "entrypoints": {
+    "backend": ["../server.py", "../vaultpilot_server.py"],
+    "plugin": "../vaultpilot/src/main.ts",
+    "api_client": "../vaultpilot/src/api-client.ts"
+  },
+  "websocket": {
+    "server_endpoints": ["/ws", "/ws/{vault_id}", "/ws/obsidian"],
+    "client_file": "../vaultpilot/src/api-client.ts"
+  },
+  "api": {
+    "ts_types": "../vaultpilot-api-integration/src/types/index.ts",
+    "ts_endpoints": "../vaultpilot-api-integration/src/api/endpoints.ts",
+    "py_models": "../vaultpilot-api-integration/python/models.py"
+  },
+  "docs": {
+    "index": "./README.md",
+    "backend_communication": "./api/BACKEND_COMMUNICATION_GUIDE.md"
+  }
+}
+

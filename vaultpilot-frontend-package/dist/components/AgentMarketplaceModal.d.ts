@@ -1,0 +1,37 @@
+import { Modal, App } from 'obsidian';
+import type VaultPilotPlugin from '../main';
+export declare class AgentMarketplaceModal extends Modal {
+    private plugin;
+    private currentCategory;
+    private searchQuery;
+    private sortBy;
+    private installedAgents;
+    private marketplaceAgents;
+    private categories;
+    private headerEl;
+    private searchEl;
+    private categoryEl;
+    private sortEl;
+    private agentsGridEl;
+    private loadingEl;
+    private paginationEl;
+    private currentPage;
+    private totalPages;
+    private itemsPerPage;
+    constructor(app: App, plugin: VaultPilotPlugin);
+    onOpen(): Promise<void>;
+    private createHeader;
+    private createMainContent;
+    private loadMarketplaceData;
+    private loadInstalledAgents;
+    private renderCategories;
+    private updateCategoryPills;
+    private renderMarketplace;
+    private renderAgentsGrid;
+    private renderPagination;
+    private showAgentDetails;
+    private installAgent;
+    private manageAgent;
+    private showLoading;
+    onClose(): void;
+}

@@ -25,7 +25,7 @@ from evoagentx_integration import (
     WorkflowProcessor,
     AgentManager
 )
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect, Response
 
 # Create FastAPI app
 app = FastAPI(
@@ -52,6 +52,19 @@ async def websocket_vault_endpoint(websocket: WebSocket, vault_id: str):
     from evoagentx_integration.websocket_handler import websocket_endpoint as ws_handler
     await ws_handler(websocket, vault_id)
 
+# Backward/forward compatible WebSocket route expected by some clients
+@app.websocket("/ws/obsidian")
+async def websocket_obsidian_endpoint(websocket: WebSocket):
+    """Alias WebSocket endpoint used by older frontend clients"""
+    from evoagentx_integration.websocket_handler import websocket_endpoint as ws_handler
+    await ws_handler(websocket, "default")
+
+# Canonical agent WebSocket endpoint
+@app.websocket("/ws/agent")
+async def websocket_agent_endpoint(websocket: WebSocket):
+    from evoagentx_integration.websocket_handler import websocket_endpoint as ws_handler
+    await ws_handler(websocket, "default")
+
 # Initialize services
 vault_analyzer = VaultAnalyzer()
 copilot_engine = CopilotEngine()
@@ -67,6 +80,7 @@ async def root():
         "status": "running",
         "endpoints": {
             "health": "/health",
+            "status": "/status",
             "chat": "/api/obsidian/chat",
             "vault_analysis": "/api/obsidian/vault/analyze",
             "workflow": "/api/obsidian/workflow",
@@ -87,6 +101,18 @@ async def health_check():
             "agent_manager": "operational"
         }
     }
+
+# Add a standardized status endpoint used by some clients
+@app.get("/status")
+async def status_check():
+    return {
+        "status": "ok",
+        "version": "2.0.0"
+    }
+
+@app.head("/status")
+async def status_head():
+    return Response(status_code=200)
 
 @app.get("/api/obsidian/status")
 async def get_status():

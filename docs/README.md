@@ -2,6 +2,14 @@
 
 Welcome to the VaultPilot documentation! This directory contains all project documentation organized by category.
 
+## 🚩 Entry Points
+
+- Project overview: ../README.md
+- System architecture: ./architecture/SYSTEM_ARCHITECTURE.md
+- Backend servers: ../server.py and ../vaultpilot_server.py
+- Obsidian plugin entry: ../vaultpilot/src/main.ts
+- API integration package: ../vaultpilot-api-integration/README.md
+
 ## 📂 Directory Structure
 
 ### 🚀 Current Development
@@ -21,6 +29,7 @@ Welcome to the VaultPilot documentation! This directory contains all project doc
   - [Frontend Implementation Guide](./api/FRONTEND_IMPLEMENTATION_GUIDE.md)
   - [Frontend Utilization Guide](./api/FRONTEND_UTILIZATION_GUIDE.md)
   - [Frontend UX/UI Design](./api/FRONTEND_UX_UI_DESIGN.md)
+  - [Backend Communication Guide](./api/BACKEND_COMMUNICATION_GUIDE.md)
 
 ### ✨ Features
 - **[/features/](./features/)** - Feature-specific documentation
@@ -56,6 +65,14 @@ Welcome to the VaultPilot documentation! This directory contains all project doc
   - [AI Agent Debug Config](./archives/debug/AI_AGENT_DEBUG_CONFIG.md)
   - [AI Agent Prompt Template](./archives/debug/AI_AGENT_PROMPT_TEMPLATE.md)
 
+### 🗂️ Root Document Collection
+- All top-level markdown documents previously in the repo root now live in [docs/root/](./root/). This includes reports, plans, summaries, and status docs such as:
+  - Phase summaries (Phase 1–3)
+  - Refactor plans/summaries
+  - WebSocket and streaming verification
+  - UI/UX analysis and roadmaps
+  - Integration and implementation plans
+
 ## 🎯 Quick Links
 
 ### For Users
@@ -64,13 +81,22 @@ Welcome to the VaultPilot documentation! This directory contains all project doc
 - 🔧 [Troubleshooting](./setup/TROUBLESHOOTING.md) - Common issues
 
 ### For Developers
-- 🏗️ [Phase 2 Plan](./development/PHASE_2_PLAN.md) - Current development focus
+- 🏗️ [Phase 2 Plan](./development/PHASE_2_PLAN.md) - Development plan
 - 💻 [Developer Quick Start](./development/PHASE_2_QUICK_START.md) - Development setup
 - 🗺️ [Roadmap](./development/DEVPIPE_ROADMAP.md) - Future planning
+- ✅ [Phase 3 Implementation Complete](../PHASE_3_IMPLEMENTATION_COMPLETE.md)
 
 ### For Integrators
 - 🔌 [API Documentation](./api/) - Integration guides
 - ✨ [Features](./features/) - Feature-specific documentation
+
+### For Agents (Machine Navigation)
+- Machine index (JSON): ./index.json
+- Agent-friendly map: ./AGENT_INDEX.md
+
+## 🧭 Table of Contents
+
+See SUMMARY.md for a human-curated table of contents across all documents.
 
 ## 📋 Documentation Guidelines
 
@@ -88,5 +114,5 @@ Welcome to the VaultPilot documentation! This directory contains all project doc
 ---
 
 **Last Updated**: July 5, 2025  
-**Organization**: Complete restructure from root-level docs  
-**Status**: Phase 2 development documentation active
+**Organization**: Phase 2+3 consolidated; canonical links added  
+**Status**: Active

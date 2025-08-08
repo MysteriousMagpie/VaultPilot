@@ -315,6 +315,11 @@ Refer to the `/evoagentx_integration/` folder for:
 
 VaultPilot connects to EvoAgentX through a comprehensive integration architecture supporting both REST API and WebSocket communication for optimal performance and real-time features.
 
+Canonical references:
+- Docs index: docs/README.md
+- Backend comms: docs/api/BACKEND_COMMUNICATION_GUIDE.md
+- Agent index: docs/AGENT_INDEX.md
+
 ### Communication Protocols
 
 #### REST API Endpoints

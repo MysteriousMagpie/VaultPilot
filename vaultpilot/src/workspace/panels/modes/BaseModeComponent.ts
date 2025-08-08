@@ -16,8 +16,8 @@ import type {
 } from '../types';
 
 export abstract class BaseModeComponent extends Component implements ModeComponent {
-  protected context: ModeContext;
-  protected container: HTMLElement;
+  protected context!: ModeContext;
+  protected container!: HTMLElement;
   protected mode: WorkspaceMode;
   
   // Performance tracking
